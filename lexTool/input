@@ -24,4 +24,4 @@ begin
    end ;
    writeInt BIGGER ;
 end
-
+true
