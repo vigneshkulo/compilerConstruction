@@ -1,3 +1,7 @@
-lex lexAnal.l
-gcc lex.yy.c -ll -o run
-./run <input
+How to run:
+
+	lex lexAnal.l
+	gcc lex.yy.c -ll -o run
+	./run <input
+
+Tried to run on cs1, cs2, cs3 and cs4. But all servers did not have lex library (-ll support) in them.

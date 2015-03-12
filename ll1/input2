@@ -1,0 +1,6 @@
+S -> ABCDE
+A -> a | epi
+B -> b | epi
+C -> c 
+D -> d | epi
+E -> e | epi
