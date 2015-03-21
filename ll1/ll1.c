@@ -220,6 +220,40 @@ int findFollow(char* key, str_set *argSet)
 	return 1;
 }
 
+char* stack;
+
+int pop()
+{
+	if(1 != strlen(stack))
+	{
+		strncpy(stack, (stack+1), strlen(stack) - 1);
+		stack[strlen(stack)-1] = '\0';
+	}
+	else
+		stack[0] = '\0';
+	return 0;
+}
+
+int replace(char* var, char* prod)
+{
+	char temp[50];
+
+	/* Remove Variable */
+	if(1 != strlen(stack))
+	{
+		strncpy(stack, (stack+1), strlen(stack) - 1);
+		stack[strlen(stack)-1] = '\0';
+	}
+	else
+		stack[0] = '\0';
+
+	/* Replace with Production rule */
+	sprintf(temp, "%s%s", prod, stack);
+	sprintf(stack, "%s", temp);
+
+	return 0;
+}
+
 int main(int argc, char *argv[]) 
 {
 	int i, j, k;
@@ -544,8 +578,75 @@ int main(int argc, char *argv[])
 		}
 		printf("\n");
 	}
-	
         printf("* -------------------------------------------------\n");
+	
+	/* String pattern matching */
+
+	char input[] = "aacbbcb"; 
+	char cur;
+	char *ptr = input;
+	stack = (char* ) malloc (50);
+	strncpy(stack, variables[0], 30);
+
+
+	printf("* Stack is : %s\n", stack);
+	printf("* Input char is : %c\n", *ptr);
+
+	int vInd = 0;
+	int tInd = 0;
+	
+	while(0 != strlen(ptr))
+	{
+		yy_scan_string(stack);
+		tokenVal = yylex();
+		if(VARIABLE == tokenVal)
+		{
+			printf("* Variable found at top of stack: %s\n", yytext);
+			cur = *ptr;
+			for(j = 0; j < termNum; j++)
+			{
+				if(!strcmp(terminals[j], &cur))	
+					break;
+			}
+			tInd = j;
+
+			HASH_FIND_STR( users, yytext, s);
+			vInd = s->tabIndex;
+
+			printf("* Table Index of %s, %c: [%d][%d]\n", yytext, cur, vInd, tInd);
+
+			printf("* STACK => %s ", stack);
+			if(!strcmp("epi", table[vInd][tInd]))	
+				replace(variables[vInd], "");
+			else
+				replace(variables[vInd], table[vInd][tInd]);
+			printf("-> %s\n", stack);
+			printf("* Remaining Input is : %s\n\n", ptr);
+		}
+		else if (TERMINAL == tokenVal)
+		{
+			printf("* Terminal found at top of stack: %s\n", yytext);
+			cur = *ptr;
+			if(cur == stack[0])
+			{
+				ptr++;
+				printf("* STACK => %s ", stack);
+				pop();
+				printf("-> %s\n", stack);
+				printf("* Remaining Input is : %s\n\n", ptr);
+			}
+			else
+				break;
+		}
+	}
+
+        printf("* -------------------------------------------------\n");
+	if('\0' == *ptr)
+		printf("* String is Accepted :-)\n");
+	else
+		printf("* String is Rejected :-(\n");
+        printf("* -------------------------------------------------\n");
+
 	HASH_ITER(hh, users, s, tmp) 
 	{
 		HASH_DEL(users, s);
