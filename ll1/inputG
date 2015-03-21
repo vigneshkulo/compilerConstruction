@@ -1,0 +1,7 @@
+exp => term exp'
+exp' => addop term exp' | epi 
+addop => + | -
+term => factor term'
+term' => mulop factor term' | epi
+mulop => *
+factor => (exp) | number
