@@ -8,6 +8,8 @@
 #define EXIT	0
 #define SRC	44
 #define REC	55
+#define YES	1
+#define NO	0
 
 extern int yylex();
 extern int yy_scan_string();
@@ -356,24 +358,23 @@ int main(int argc, char *argv[])
 	}
 
         printf("* -------------------------------------------------\n");
-	printf("* Variables: ");
+	printf("\tVariables: ");
 	for(i = 0; i < varNum; i++)
 	{
 		if(0 != i)
 			printf(", ");
 		printf("%s", variables[i]);
 	}
-	printf("\n");
-	printf("* Terminals: ");
+	printf("\n\tTerminals: ");
 	for(i = 0; i < termNum; i++)
 	{
 		if(0 != i)
 			printf(", ");
 		printf("%s", terminals[i]);
 	}
-	printf("\n");
+        printf("\n* -------------------------------------------------\n");
+	printf("\n\t\tProduction Rules\n");
         printf("* -------------------------------------------------\n");
-	printf("* Production Rules\n");
         HASH_ITER(hh, users, s, tmp)
         {
                 printf("\t%-3s -> ", s->key);
@@ -389,15 +390,16 @@ int main(int argc, char *argv[])
         }
         printf("* -------------------------------------------------\n");
 
-	#if 1
 	/* Calculate First Sets */
+	printf("\n\t\tFirst sets\n");
+        printf("* -------------------------------------------------\n");
         HASH_ITER(hh, users, s, tmp)
         {
 		str_set temp;
 		temp.num = 0;
 		temp.set = NULL;
 
-                printf("* Variable: %-3s: ", s->key);
+                printf("  Variable: %-3s: ", s->key);
 		fflush(stdout);
 		if(SKIP == findFirst(s->key, &temp, SRC))
 		{
@@ -408,7 +410,7 @@ int main(int argc, char *argv[])
 		}
 
 		memcpy(&(s->first), &temp, sizeof(str_set));
-                printf(" N = %d, First Set = ", s->first.num);
+	//	printf(" N = %d, First Set = ", s->first.num);
 		for(i = 0; i < s->first.num; i++)
 		{
 			if(0 != i)
@@ -417,10 +419,11 @@ int main(int argc, char *argv[])
 		}
 		printf(" \n");
         }
-
         printf("* -------------------------------------------------\n");
 
 	/* Calculate Follow Sets */
+	printf("\n\t\tFollow sets\n");
+        printf("* -------------------------------------------------\n");
         HASH_ITER(hh, users, s, tmp)
         {
 		str_set temp;
@@ -437,11 +440,11 @@ int main(int argc, char *argv[])
 			temp.set = NULL;
 		}
 
-                printf("* Variable: %-3s: ", s->key);
+                printf("  Variable: %-3s: ", s->key);
 		findFollow(s->key, &temp);
 
 		memcpy(&(s->follow), &temp, sizeof(str_set));
-                printf(" N = %d, Follow Set = ", s->follow.num);
+	//	printf(" N = %d, Follow Set = ", s->follow.num);
 		for(i = 0; i < s->follow.num; i++)
 		{
 			if(0 != i)
@@ -450,15 +453,14 @@ int main(int argc, char *argv[])
 		}
 		printf(" \n");
         }
-
-	#endif
+        printf("* -------------------------------------------------\n");
 
 	terminals[termNum] = (char*) malloc (3);
 	strncpy(terminals[termNum], "$", 3);
 	termNum++;
 
 	/*  Creating Parse table */	
-	int in;
+	int in, ll1 = YES;
 	char *table[varNum][termNum];
 	memset(table, 0, sizeof(table));
 
@@ -505,8 +507,13 @@ int main(int argc, char *argv[])
 							}
 						}
 					}
-					table[s->tabIndex][j] = (char*) malloc (30);
-					strncpy(table[s->tabIndex][j], ruleE, 30);
+					if(NULL == table[s->tabIndex][j])
+					{
+						table[s->tabIndex][j] = (char*) malloc (30);
+						strncpy(table[s->tabIndex][j], ruleE, 30);
+					}
+					else
+						ll1 = NO;
 				}
 			}
 			else if(TERMINAL == tokenVal)
@@ -532,6 +539,8 @@ int main(int argc, char *argv[])
 					table[s->tabIndex][j] = (char*) malloc (30);
 					strncpy(table[s->tabIndex][j], ruleE, 30);
 				}
+				else
+					ll1 = NO;
 			}
 			else if(EPSILON == tokenVal)
 			{
@@ -548,8 +557,13 @@ int main(int argc, char *argv[])
 					#ifdef DE
 					printf("\t\t\t-> Add %s to Table[%d][%d]\n", yytext, s->tabIndex, j);
 					#endif
-					table[s->tabIndex][j] = (char*) malloc (30);
-					strncpy(table[s->tabIndex][j], yytext, 30);
+					if(NULL == table[s->tabIndex][j])
+					{
+						table[s->tabIndex][j] = (char*) malloc (30);
+						strncpy(table[s->tabIndex][j], yytext, 30);
+					}
+					else
+						ll1 = NO;
 				}
 			}
 		}
@@ -557,100 +571,166 @@ int main(int argc, char *argv[])
 		printf("\n");
 		#endif
 	}
-        printf("* -------------------------------------------------\n");
-	printf("\t\t Parse Table\n");
-        printf("  -------------------------------------------------\n\t");
-	for(i = 0; i < termNum; i++)
+
+	if(YES == ll1)
 	{
-		printf("%s\t", terminals[i]);
-	}
-	printf("\n");
-        printf("  -------------------------------------------------\n");
-	for(i = 0; i < varNum; i++)
-	{
-		printf("%s\t", variables[i]);
-		for(j = 0; j < termNum; j++)
+		printf("\n\t\t Parse Table\n");
+		printf("  -------------------------------------------------\n\t");
+		for(i = 0; i < termNum; i++)
 		{
-			if (NULL != table[i][j])
-				printf("%s\t", table[i][j]);
-			else
-				printf(" \t");
+			printf("%s\t", terminals[i]);
 		}
 		printf("\n");
-	}
-        printf("* -------------------------------------------------\n");
-	
-	/* String pattern matching */
-
-	char input[] = "aacbbcb"; 
-	char cur;
-	char *ptr = input;
-	stack = (char* ) malloc (50);
-	strncpy(stack, variables[0], 30);
-
-
-	printf("* Stack is : %s\n", stack);
-	printf("* Input char is : %c\n", *ptr);
-
-	int vInd = 0;
-	int tInd = 0;
-	
-	while(0 != strlen(ptr))
-	{
-		yy_scan_string(stack);
-		tokenVal = yylex();
-		if(VARIABLE == tokenVal)
+		printf("  -------------------------------------------------\n");
+		for(i = 0; i < varNum; i++)
 		{
-			printf("* Variable found at top of stack: %s\n", yytext);
-			cur = *ptr;
+			printf("%s\t", variables[i]);
 			for(j = 0; j < termNum; j++)
 			{
-				if(!strcmp(terminals[j], &cur))	
+				if (NULL != table[i][j])
+					printf("%s\t", table[i][j]);
+				else
+					printf(" \t");
+			}
+			printf("\n");
+		}
+		printf("\n");
+	
+		/* String pattern matching */
+		char input[] = "aacbbcb"; 
+		char cur;
+		char *ptr = input;
+		stack = (char* ) malloc (50);
+		strncpy(stack, variables[0], 30);
+
+		printf("  -------------------------------------------------\n");
+		printf("\tPattern Matching for input: %s\n", input);
+		printf("  -------------------------------------------------\n");
+
+		printf("  Stack is : %s\n", stack);
+		printf("  Input char is : %c\n", *ptr);
+
+		int vInd = 0;
+		int tInd = 0;
+		
+		while(0 != strlen(ptr))
+		{
+			yy_scan_string(stack);
+			tokenVal = yylex();
+			if(VARIABLE == tokenVal)
+			{
+				printf("  Variable found at top of stack: %s\n", yytext);
+				cur = *ptr;
+				for(j = 0; j < termNum; j++)
+				{
+					if(!strcmp(terminals[j], &cur))	
+						break;
+				}
+				/* Terminal not found */
+				if(j == termNum)
+				{
+					printf("  Invalid terminal symbol: %c \n", cur);
+					break;
+				}
+
+				tInd = j;
+
+				HASH_FIND_STR( users, yytext, s);
+				vInd = s->tabIndex;
+
+				printf("  Table Index of %s, %c: [%d][%d]\n", yytext, cur, vInd, tInd);
+
+				/* Variable has no rule to replace */
+				if(NULL == table[vInd][tInd])
+				{
+					printf("  No rule for Variable %s in table[%d][%d]\n", yytext, vInd, tInd);
+					break;
+				}
+
+				printf("  STACK => %s ", stack);
+				if(!strcmp("epi", table[vInd][tInd]))	
+					replace(variables[vInd], "");
+				else
+					replace(variables[vInd], table[vInd][tInd]);
+				printf("-> %s\n", stack);
+				printf("  Remaining Input is : %s\n\n", ptr);
+			}
+			else if (TERMINAL == tokenVal)
+			{
+				printf("  Terminal found at top of stack: %s\n", yytext);
+				cur = *ptr;
+				if(cur == stack[0])
+				{
+					ptr++;
+					printf("  STACK => %s ", stack);
+					pop();
+					printf("-> %s\n", stack);
+					printf("  Remaining Input is : %s\n\n", ptr);
+				}
+				else
 					break;
 			}
-			tInd = j;
-
-			HASH_FIND_STR( users, yytext, s);
-			vInd = s->tabIndex;
-
-			printf("* Table Index of %s, %c: [%d][%d]\n", yytext, cur, vInd, tInd);
-
-			printf("* STACK => %s ", stack);
-			if(!strcmp("epi", table[vInd][tInd]))	
-				replace(variables[vInd], "");
-			else
-				replace(variables[vInd], table[vInd][tInd]);
-			printf("-> %s\n", stack);
-			printf("* Remaining Input is : %s\n\n", ptr);
 		}
-		else if (TERMINAL == tokenVal)
-		{
-			printf("* Terminal found at top of stack: %s\n", yytext);
-			cur = *ptr;
-			if(cur == stack[0])
-			{
-				ptr++;
-				printf("* STACK => %s ", stack);
-				pop();
-				printf("-> %s\n", stack);
-				printf("* Remaining Input is : %s\n\n", ptr);
-			}
-			else
-				break;
-		}
+
+		printf("* -------------------------------------------------\n");
+		if('\0' == *ptr)
+			printf("  String is Accepted :-)\n");
+		else
+			printf("  String is Rejected :-(\n");
+		printf("* -------------------------------------------------\n");
+	}
+	else
+	{
+		printf("* -------------------------------------------------\n");
+		printf("  Grammar is not LL1 :-(\n");
+		printf("* -------------------------------------------------\n");
 	}
 
-        printf("* -------------------------------------------------\n");
-	if('\0' == *ptr)
-		printf("* String is Accepted :-)\n");
-	else
-		printf("* String is Rejected :-(\n");
-        printf("* -------------------------------------------------\n");
-
+	/* Freeing memory */
 	HASH_ITER(hh, users, s, tmp) 
 	{
+		for(i = 0; i < s->ruleN; i++)
+		{
+			for(j = 0; j < s->ruleI[i]; j++)
+				free(s->rule[i][j]);
+			free(s->rule[i]);
+		}
+		free(s->rule);
+		free(s->ruleI);
+
+		for(i = 0; i < s->first.num; i++)
+		{
+			free(s->first.set[i]);
+		}
+		free(s->first.set);
+
+		for(i = 0; i < s->follow.num; i++)
+		{
+			free(s->follow.set[i]);
+		}
+		free(s->follow.set);
+
 		HASH_DEL(users, s);
 		free(s);
 	}
+	for(i = 0; i < varNum; i++)
+	{
+		free(variables[i]);
+	}
+	for(i = 0; i < termNum; i++)
+	{
+		free(terminals[i]);
+	}
+	if(YES == ll1) free(stack);
+	free(ruleE);
+
+	for(i = 0; i < varNum; i++)
+	{
+		for(j = 0; j < termNum; j++)
+		{
+			free(table[i][j]);
+		}
+	}
+
 	return 0;
 }

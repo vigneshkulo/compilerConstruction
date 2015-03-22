@@ -1,0 +1,4 @@
+E -> T+Ex | F
+T -> wT'
+T' -> *FyT' | epi
+F -> T+Ex | z | epi
