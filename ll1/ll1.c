@@ -224,12 +224,12 @@ int findFollow(char* key, str_set *argSet)
 
 char* stack;
 
-int pop()
+int pop(int nChar)
 {
 	if(1 != strlen(stack))
 	{
-		strncpy(stack, (stack+1), strlen(stack) - 1);
-		stack[strlen(stack)-1] = '\0';
+		strncpy(stack, (stack+nChar), strlen(stack) - nChar);
+		stack[strlen(stack)-nChar] = '\0';
 	}
 	else
 		stack[0] = '\0';
@@ -243,8 +243,8 @@ int replace(char* var, char* prod)
 	/* Remove Variable */
 	if(1 != strlen(stack))
 	{
-		strncpy(stack, (stack+1), strlen(stack) - 1);
-		stack[strlen(stack)-1] = '\0';
+		strncpy(stack, (stack+ strlen(var)), strlen(stack) - strlen(var));
+		stack[strlen(stack)- strlen(var)] = '\0';
 	}
 	else
 		stack[0] = '\0';
@@ -515,7 +515,7 @@ int main(int argc, char *argv[])
 					}
 					else
 					{
-						printf("* Element %s already present at table[%d][%d]\n", table[s->tabIndex][j],s->tabIndex,j);
+						printf("* Rule %s already present at table[%d][%d]\n", table[s->tabIndex][j],s->tabIndex,j);
 						ll1 = NO;
 					}
 				}
@@ -545,7 +545,7 @@ int main(int argc, char *argv[])
 				}
 				else
 				{
-					printf("* Element %s already present at table[%d][%d]\n", table[s->tabIndex][j],s->tabIndex,j);
+					printf("* Rule %s already present at table[%d][%d]\n", table[s->tabIndex][j],s->tabIndex,j);
 					ll1 = NO;
 				}
 			}
@@ -571,7 +571,7 @@ int main(int argc, char *argv[])
 					}
 					else
 					{
-						printf("* Element %s already present at table[%d][%d]\n", table[s->tabIndex][j],s->tabIndex,j);
+						printf("* Rule %s already present at table[%d][%d]\n", table[s->tabIndex][j],s->tabIndex,j);
 						ll1 = NO;
 					}
 				}
@@ -608,60 +608,71 @@ int main(int argc, char *argv[])
 	
 		/* String pattern matching */
 		char input[] = "aacbbcb"; 
-		char cur;
+		char nul = '\0';
+		char tempVar[30];
+		char tempTer[30];
 
 		#if 0
-		char *ptr = input;			/* Equare to input, if input specified internally */
+		char *ptr = input;			/* Equate to input, if input specified internally */
 		#else
-		char *ptr = argv[1];			/* Equare to argv1, if input specified externally */
+		char *ptr = argv[1];			/* Equate to argv1, if input specified externally */
 		#endif
 
 		stack = (char* ) malloc (50);
-		strncpy(stack, variables[0], 30);
+		sprintf(stack, "%s$", variables[0]);
 
 		printf("  -------------------------------------------------\n");
 		printf("\tPattern Matching for input: %s\n", ptr);
 		printf("  -------------------------------------------------\n");
 
+		/* Accepts NULL string */
+		if(NULL == ptr)
+			ptr = &nul;
+
 		printf("  Stack is : %s\n", stack);
-		printf("  Input char is : %c\n", *ptr);
 
 		int vInd = 0;
 		int tInd = 0;
 		
-		while(0 != strlen(ptr))
+		/* Exit if input string is empty or Stack is empty */
+		while( (0 != strlen(ptr)) && ('$' != *stack) )
 		{
 			yy_scan_string(stack);
 			tokenVal = yylex();
 			if(VARIABLE == tokenVal)
 			{
-				printf("  Variable found at top of stack: %s\n", yytext);
-				cur = *ptr;
+				strncpy(tempVar, yytext, 30);
+				printf("  Variable found at top of stack: %s\n", tempVar);
+
+				yy_scan_string(ptr);
+				yylex();
+				printf("  Input variable: %s\n", yytext);
+
 				for(j = 0; j < termNum; j++)
 				{
-					if(!strcmp(terminals[j], &cur))	
+					if(!strcmp(terminals[j], yytext))	
 						break;
 				}
 				/* Terminal not found */
 				if(j == termNum)
 				{
-					printf("  Invalid terminal symbol: %c \n", cur);
+					printf("  Invalid terminal symbol: %s \n", yytext);
 					break;
 				}
 
 				tInd = j;
 
-				HASH_FIND_STR( users, yytext, s);
+				HASH_FIND_STR( users, tempVar, s);
 				vInd = s->tabIndex;
-
-				printf("  Table Index of %s, %c: [%d][%d]\n", yytext, cur, vInd, tInd);
 
 				/* Variable has no rule to replace */
 				if(NULL == table[vInd][tInd])
 				{
-					printf("  No rule for Variable %s in table[%d][%d]\n", yytext, vInd, tInd);
+					printf("  No rule for Variable %s in table[%d][%d]\n", tempVar, vInd, tInd);
 					break;
 				}
+
+				printf("  Rule for %s & %s: [%d][%d]: %s\n", tempVar, yytext, vInd, tInd, table[vInd][tInd]);
 
 				printf("  STACK => %s ", stack);
 				if(!strcmp("epi", table[vInd][tInd]))	
@@ -673,13 +684,18 @@ int main(int argc, char *argv[])
 			}
 			else if (TERMINAL == tokenVal)
 			{
-				printf("  Terminal found at top of stack: %s\n", yytext);
-				cur = *ptr;
-				if(cur == stack[0])
+				strncpy(tempTer, yytext, 30);
+				printf("  Terminal found at top of stack: %s\n", tempTer);
+
+				yy_scan_string(ptr);
+				yylex();
+				printf("  Input variable: %s\n", yytext);
+
+				if(!strcmp( yytext, tempTer))	
 				{
-					ptr++;
+					ptr += strlen(yytext);
 					printf("  STACK => %s ", stack);
-					pop();
+					pop(strlen(yytext));
 					printf("-> %s\n", stack);
 					printf("  Remaining Input is : %s\n\n", ptr);
 				}
