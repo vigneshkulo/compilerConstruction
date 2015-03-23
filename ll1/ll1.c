@@ -256,6 +256,7 @@ int replace(char* var, char* prod)
 	return 0;
 }
 
+/* Program Start */
 int main(int argc, char *argv[]) 
 {
 	int i, j, k;
@@ -513,7 +514,10 @@ int main(int argc, char *argv[])
 						strncpy(table[s->tabIndex][j], ruleE, 30);
 					}
 					else
+					{
+						printf("* Element %s already present at table[%d][%d]\n", table[s->tabIndex][j],s->tabIndex,j);
 						ll1 = NO;
+					}
 				}
 			}
 			else if(TERMINAL == tokenVal)
@@ -540,7 +544,10 @@ int main(int argc, char *argv[])
 					strncpy(table[s->tabIndex][j], ruleE, 30);
 				}
 				else
+				{
+					printf("* Element %s already present at table[%d][%d]\n", table[s->tabIndex][j],s->tabIndex,j);
 					ll1 = NO;
+				}
 			}
 			else if(EPSILON == tokenVal)
 			{
@@ -563,7 +570,10 @@ int main(int argc, char *argv[])
 						strncpy(table[s->tabIndex][j], yytext, 30);
 					}
 					else
+					{
+						printf("* Element %s already present at table[%d][%d]\n", table[s->tabIndex][j],s->tabIndex,j);
 						ll1 = NO;
+					}
 				}
 			}
 		}
@@ -599,12 +609,18 @@ int main(int argc, char *argv[])
 		/* String pattern matching */
 		char input[] = "aacbbcb"; 
 		char cur;
-		char *ptr = input;
+
+		#if 0
+		char *ptr = input;			/* Equare to input, if input specified internally */
+		#else
+		char *ptr = argv[1];			/* Equare to argv1, if input specified externally */
+		#endif
+
 		stack = (char* ) malloc (50);
 		strncpy(stack, variables[0], 30);
 
 		printf("  -------------------------------------------------\n");
-		printf("\tPattern Matching for input: %s\n", input);
+		printf("\tPattern Matching for input: %s\n", ptr);
 		printf("  -------------------------------------------------\n");
 
 		printf("  Stack is : %s\n", stack);

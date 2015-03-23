@@ -1,0 +1,6 @@
+E -> T+B | z
+T -> wA
+A -> *C | epi
+F -> T+B | z
+B -> Ex | x
+C -> FyA | yA

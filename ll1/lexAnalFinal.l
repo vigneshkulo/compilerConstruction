@@ -8,7 +8,7 @@
 
 %%
 
-"E"|"T"|"T'"|"F"		return VARIABLE;
+"E"|"T"|"A"|"B"|"C"|"F"		return VARIABLE;
 "+"|"x"|"w"|"*"|"y"|"z"		return TERMINAL;
 "epi"				return EPSILON;
 \n				return NEWLINE;

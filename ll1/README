@@ -1,3 +1,3 @@
 lex lexAnal.l
 gcc lex.yy.c ll1.c -ll -o run
-./run <input
+./run <input "inputString"
