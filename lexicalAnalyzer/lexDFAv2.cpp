@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -34,8 +35,14 @@ int print(string lexeme, int finS)
 	cout << left << setw(30) << setfill(' ') << lexeme << token[finS] << endl;
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+	if( argc <= 1)
+	{
+		printf("* Enter Input Filename\n");
+		exit(0);
+	}
+
 	fill_n(token, 150, "UNDEFINED SYMBOL");
 
 	token[TYPEDEF] = "TypeRef";
@@ -114,7 +121,7 @@ int main()
 	}
 
 	ifstream fp;
-	fp.open("input");
+	fp.open(argv[1]);
 
 	char ca;
 	string lexeme;

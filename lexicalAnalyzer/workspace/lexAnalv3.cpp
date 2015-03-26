@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -16,46 +17,47 @@ string token[150];
 #define ASSIGN		4
 #define RANGE		5
 #define KEYWORD		6
-#define QUOTE		7
-#define LPAREN		8
-#define RPAREN		9
-#define COMMA		10
-#define HYPHEN		11
-#define COLON		12
-#define EQUALS		13
-#define LCURLY		14
-#define BAR		15
-#define RCURLY		16
+#define LCURLY		7
+#define RCURLY		8
+#define COMMA		9
+#define LPAREN		10
+#define RPAREN		11
+#define BAR		12
+#define QUOTE		13
 
-#define INITIAL_STATE	17
+#define INITIAL_STATE	14
 
-#define INPUT		"New"
+#define INPUT		"dfaTable"
 
 int print(string lexeme, int finS)
 {
 	cout << left << setw(30) << setfill(' ') << lexeme << token[finS] << endl;
 }
 
-int main()
+int main(int argc, char* argv[])
 {
+        if( argc <= 1)
+        {
+                printf("* Enter Input Filename\n");
+                exit(0);
+        }
+
 	fill_n(token, 150, "UNDEFINED SYMBOL");
+	fill(token+18, token+98, "TypeRef");
 
 	token[TYPEDEF] = "TypeRef";
 	token[IDENTIFIER] = "Identifier";
 	token[NUMBER] = "Number";
-	token[QUOTE] = "Quote";
-	token[LPAREN] = "LPAREN";
-	token[RPAREN] = "RPAREN";
-	token[COMMA] = "COMMA";
-	token[HYPHEN] = "HYPHEN";
-	token[COLON] = "COLON";
-	token[EQUALS] = "EQUALS";
-	token[LCURLY] = "LCURLY";
-	token[BAR] = "BAR";
-	token[RCURLY] = "RCURLY";
 	token[ASSIGN] = "ASSIGN";
 	token[RANGE] = "RANGE";
 	token[KEYWORD] = "KEYWORD";
+	token[LCURLY] = "LCURLY";
+	token[RCURLY] = "RCURLY";
+	token[COMMA] = "COMMA";
+	token[LPAREN] = "LPAREN";
+	token[RPAREN] = "RPAREN";
+	token[BAR] = "BAR";
+	token[QUOTE] = "Quote";
 
 	int row =  -1;
 	int column = -1;
@@ -116,7 +118,7 @@ int main()
 	}
 
 	ifstream fp;
-	fp.open("input");
+	fp.open(argv[1]);
 
 	char ca;
 	string lexeme;
@@ -128,7 +130,7 @@ int main()
 	cout << "---------------------------------------------------------------" << endl;
 	cout << left << setw(30) << setfill(' ') << "Lexeme" << "Token Name" << endl;
 	cout << "---------------------------------------------------------------" << endl;
-
+	
 	while(fp.get(ca))
 	{
 		if( ca >= 48 && ca <= 57 )
@@ -137,28 +139,41 @@ int main()
 			index = 10 + (ca - 65);
 		else if( ca >= 97 && ca <= 122 )
 			index = 36 + (ca - 97);
-		else if( 34 == ca)
-			index = 62;
-		else if( 40 == ca)
-			index = 63;
-		else if( 41 == ca)
-			index = 64;
-		else if( 44 == ca)
-			index = 65;
-		else if( 45 == ca)
-			index = 66;
-		else if( 58 == ca)
-			index = 67;
-		else if( 61 == ca)
-			index = 68;
+		/* { */
 		else if( 123 == ca)
-			index = 69;
-		else if( 124 == ca)
-			index = 70;
+			index = 62;
+		/* } */
 		else if( 125 == ca)
+			index = 63;
+		/* , */
+		else if( 44 == ca)
+			index = 64;
+		/* ( */
+		else if( 40 == ca)
+			index = 65;
+		/* ) */
+		else if( 41 == ca)
+			index = 66;
+		/* | */
+		else if( 124 == ca)
+			index = 67;
+		/* " */
+		else if( 34 == ca)
+			index = 68;
+
+		/* - */
+		else if( 45 == ca)
+			index = 69;
+		/* : */
+		else if( 58 == ca)
+			index = 70;
+		/* = */
+		else if( 61 == ca)
 			index = 71;
+		/* . */
 		else if( 46 == ca)
 			index = 72;
+
 		else if( ca <= 32)
 			index = -2;
 		else
@@ -174,10 +189,11 @@ int main()
 
 				lexeme.clear();
 				lexeme += ca;
-				nxtS = dfaTable[0][index];
+				nxtS = dfaTable[INITIAL_STATE - 1][index];
 				finS = 1;
 
-				#if 0
+			//	#define DE
+				#ifdef DE
 				printf("%c", ca);
 				printf(": [%d] : [%d]\n", index, nxtS);
 				fflush(stdout);
@@ -192,7 +208,7 @@ int main()
 			nxtS = -1;
 		}
 
-		#if 0
+		#ifdef DE
 		printf("%c", ca);
 		printf(": [%d] : [%d]\n", index, nxtS);
 		fflush(stdout);

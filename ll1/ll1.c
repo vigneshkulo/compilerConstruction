@@ -226,10 +226,15 @@ char* stack;
 
 int pop(int nChar)
 {
+	int i;
+	char temp[50];
 	if(1 != strlen(stack))
 	{
-		strncpy(stack, (stack+nChar), strlen(stack) - nChar);
-		stack[strlen(stack)-nChar] = '\0';
+		for( i = 0; i < nChar; i++)
+		{
+			sscanf(stack, "%*c%s", temp);
+			sprintf(stack, "%s", temp);
+		}
 	}
 	else
 		stack[0] = '\0';
@@ -238,13 +243,20 @@ int pop(int nChar)
 
 int replace(char* var, char* prod)
 {
+	int i;
 	char temp[50];
+	int nChar = strlen(var);
 
 	/* Remove Variable */
 	if(1 != strlen(stack))
 	{
-		strncpy(stack, (stack+ strlen(var)), strlen(stack) - strlen(var));
-		stack[strlen(stack)- strlen(var)] = '\0';
+		for( i = 0; i < nChar; i++)
+		{
+			sscanf(stack, "%*c%s", temp);
+			sprintf(stack, "%s", temp);
+		}
+	//	strncpy(stack, (stack+ strlen(var)), strlen(stack) - strlen(var));
+	//	stack[strlen(stack)- strlen(var)] = '\0';
 	}
 	else
 		stack[0] = '\0';
