@@ -1,0 +1,5 @@
+To Compile:	
+	sh script.sh
+
+To Run:
+	./run <input
