@@ -13,17 +13,17 @@ number		[1-9][0-9]*|0
 %%
 
 "("		{
-			yylval.ival = atoi(yytext);
+			yylval.ival = yytext[0];
 			return LP;
 		}
 
 ")"		{
-			yylval.ival = atoi(yytext);
+			yylval.cval = yytext[0];
 			return RP;
 		}
 
 ";"		{
-			yylval.ival = atoi(yytext);
+			yylval.cval = yytext[0];
 			return SC;
 		}
 
