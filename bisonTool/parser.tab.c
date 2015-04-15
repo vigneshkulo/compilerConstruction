@@ -67,6 +67,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "common.h" 
+
+extern SYMTABLE *symTable;
+
+char *tokens[] = { "INTEGER", "BOOLEAN", "UNDEFINED"};
 
 enum treeType { T_PROGRAM, T_DECL, T_STMTSEQ, T_TERMINAL, T_STMT, T_ASSIGN, T_IF, T_WHILE, T_WRITE, T_READ, T_EXPR, 
 		T_OP, T_NO_OP, T_SIMPLE_EXPR, T_TERM, T_FACTOR, T_NUMBER, T_ELSE};
@@ -629,8 +634,308 @@ int printTree (Tree* root)
 	return 1;
 }
 
+int printSym()
+{
+	SYMTABLE *s, *tmp = NULL;
 
-#line 634 "parser.tab.c" /* yacc.c:339  */
+	printf("* -----------------------------------------------------------------\n\n");
+	printf("\t\t\tSymbol Table\n");
+	printf("* -------------------------------------------------\n");
+	printf("\tId\tLexeme\t\t\tType\n");
+	printf("* -------------------------------------------------\n");
+	HASH_ITER(hh, symTable, s, tmp)
+	{
+		printf("\t%d\t%-20s\t%-20s\n", s->index, s->key, s->type);
+	}
+	printf("* -----------------------------------------------------------------\n");
+
+	return 0;
+}
+
+int defineVar(char* ident, Tree* type)
+{
+	SYMTABLE *s = NULL;
+
+	printf("* %s is being defined as %s\n", ident, type->body.terminal);
+
+	/* Defining a variable if it is not defined */
+	HASH_FIND_STR( symTable, ident, s);
+	if(s)
+	{
+		if(!strcmp("UNDEFINED", s->type))
+		{
+			s->type = type->body.terminal;
+		}
+		else
+		{
+			printf("*** %s is already defined as %s ***\n", ident, type->body.terminal);
+			return -1;
+		}
+	}
+	return 1;
+}
+
+#define	NIL		0
+#define	CHECK_INT	1
+#define	CHECK_BOOL	2
+
+int getFactor( Tree* mFactor, int check)
+{
+	if(T_TERMINAL == mFactor->type)
+	{
+		printf("%s", mFactor->body.terminal);
+		if(CHECK_INT == 1)
+		{
+			SYMTABLE *s = NULL;
+			HASH_FIND_STR( symTable, mFactor->body.terminal, s);
+			if(s)
+			{
+				if(strcmp("int", s->type))
+				{
+					printf("(*** Not a Integer ***)");
+				}
+			}
+		}
+		return NIL;
+	}
+	else if(T_FACTOR == mFactor->type)
+	{
+		printf("(");
+		int ch = getExpr(mFactor->body.factor.expr);
+		printf(")");
+		return ch;
+	}
+	else if(T_NUMBER == mFactor->type)
+	{
+		if( 0 > mFactor->body.number || 2147483647 < mFactor->body.number)
+			printf("%d (*** Out of Range ***)", mFactor->body.number);
+		else
+			printf("%d", mFactor->body.number);
+	}
+}
+
+int getTerm( Tree* mTerm, int check)
+{
+	if(T_NO_OP == mTerm->body.term.type)
+	{
+		return getFactor(mTerm->body.term.arg.factor, check);
+	}
+	else if(T_OP == mTerm->body.term.type)
+	{
+		getFactor(mTerm->body.term.arg.exprOP.factorl, CHECK_INT);
+		printf(" %s ", mTerm->body.term.arg.exprOP.C_OP2);
+		getFactor(mTerm->body.term.arg.exprOP.factorr, CHECK_INT);
+		return CHECK_INT;
+	}
+}
+
+int getSim( Tree* mSim, int check)
+{
+	if(T_NO_OP == mSim->body.simexpression.type)
+	{
+		return getTerm(mSim->body.simexpression.arg.term, check);
+	}
+	else if(T_OP == mSim->body.simexpression.type)
+	{
+		getTerm(mSim->body.simexpression.arg.exprOP.terml, CHECK_INT);
+		printf(" %s ", mSim->body.simexpression.arg.exprOP.C_OP3);
+		getTerm(mSim->body.simexpression.arg.exprOP.termr, CHECK_INT);
+		return CHECK_INT;
+	}
+}
+
+int getExpr( Tree* mExpr)
+{
+	if(T_NO_OP == mExpr->body.expression.type)
+	{
+		return getSim(mExpr->body.expression.arg.simpleExpr, NIL);
+	}
+	else if(T_OP == mExpr->body.expression.type)
+	{
+		getSim(mExpr->body.expression.arg.exprOP.simpleExprl, CHECK_INT);
+		printf(" %s ", mExpr->body.expression.arg.exprOP.C_OP4);
+		getSim(mExpr->body.expression.arg.exprOP.simpleExprr, CHECK_INT);
+		return CHECK_BOOL;
+	}
+}
+
+int getStatSeq(Tree *mStatSeq, int level)
+{
+	int ch = 0;
+	/* Statement Sequence Part */
+	while(NULL != mStatSeq)
+	{
+		Tree *mStat = mStatSeq->body.statementseq.stmt;
+
+		switch(mStat->body.statement.type)
+		{
+			case T_ASSIGN:;
+				Tree *mAsgn = mStat->body.statement.stmt;
+				
+				if(T_READ == mAsgn->body.assign.type)
+				{
+					SYMTABLE *s = NULL;
+					HASH_FIND_STR( symTable, mAsgn->body.assign.C_IDENT, s);
+					if(s)
+					{
+						if(!strcmp("int", s->type))
+						{
+							printf("%*c %s = %s;\n", level, 9, mAsgn->body.assign.C_IDENT, 
+									mAsgn->body.assign.arg3.C_READINT);
+						}
+						else
+						{
+							printf("%*c *** %s is not an integer ***\n", level, 9, mAsgn->body.assign.C_IDENT);
+							break;
+						}
+					}
+				}
+				else if(T_EXPR == mAsgn->body.assign.type)
+				{
+					SYMTABLE *s = NULL;
+					HASH_FIND_STR( symTable, mAsgn->body.assign.C_IDENT, s);
+					if(s)
+					{
+						if(!strcmp("UNDEFINED", s->type))
+						{
+							printf("%*c *** %s is not defined ***\n", level, 9, mAsgn->body.assign.C_IDENT);
+							break;
+						}
+					}
+					printf("%*c %s = ", level, 9, mAsgn->body.assign.C_IDENT);
+					ch = getExpr(mAsgn->body.assign.arg3.expr);
+					if(CHECK_INT == ch)
+					{
+						s = NULL;
+						HASH_FIND_STR( symTable, mAsgn->body.assign.C_IDENT, s);
+						if(s)
+						{
+							if(strcmp("int", s->type))
+							{
+								printf(";\t*** %s is not an integer ***\n", mAsgn->body.assign.C_IDENT);
+							}
+							else
+								printf(";\n");
+						}
+					}
+					else if(CHECK_BOOL == ch)
+					{
+						s = NULL;
+						HASH_FIND_STR( symTable, mAsgn->body.assign.C_IDENT, s);
+						if(s)
+						{
+							if(strcmp("bool", s->type))
+							{
+								printf(";\t*** %s is not an boolean ***\n", mAsgn->body.assign.C_IDENT);
+							}
+							else
+								printf(";\n");
+						}
+					}
+					else
+						printf(";\n");
+				}
+				break;
+
+			case T_IF:;
+				printf("\n");
+
+				Tree *mIf = mStat->body.statement.stmt;
+				printf("%*c if (", level, 9); 
+				ch = getExpr(mIf->body.ifcl.expr);
+				if(CHECK_INT == ch || NIL == ch)
+				{
+					printf(")\t *** Expr result is not an boolean ***\n");
+				}
+				else
+					printf(") {\n");
+
+				getStatSeq(mIf->body.ifcl.statSeq, level + 12);	
+
+				Tree *mEl = mIf->body.ifcl.elseCl;
+				if(NULL != mEl)
+				{
+					printf("%*c }\n", level, 9);
+					printf("%*c else {\n", level, 9); 
+					getStatSeq(mEl->body.elsecl.statSeq, level + 12);	
+					printf("%*c }\n", level, 9);
+				}
+				else
+					printf("%*c }\n", level, 9);
+
+				break;
+
+			case T_WHILE:;
+				printf("\n");
+
+				Tree *mWhile = mStat->body.statement.stmt;
+				printf("%*c while (", level, 9); 
+				ch = getExpr(mWhile->body.whilecl.expr);
+				if(CHECK_INT == ch || NIL == ch)
+				{
+					printf(")\t *** Expr result is not an boolean ***\n");
+				}
+				else
+					printf(") {\n");
+
+				getStatSeq(mWhile->body.whilecl.statSeq, level + 12);	
+				printf("%*c }\n", level, 9);
+
+				break;
+
+			case T_WRITE:;
+				printf("\n");
+
+				Tree *mWrite = mStat->body.statement.stmt;
+				printf("%*c %s ", level, 9, mWrite->body.writeint.C_WRITEINT); 
+
+				ch = getExpr(mWrite->body.writeint.expr);
+				if(CHECK_BOOL == ch)
+				{
+					printf(";\t*** writeInt cannot write boolean ***\n");
+				}
+				else
+					printf(";\n");
+				break;
+
+			default:
+				printf("* :-|\n"); 
+				break;
+		}
+		mStatSeq = mStatSeq->body.statementseq.statSeq;
+		
+	}
+	return 0;
+}
+
+int genCode(Tree* root)
+{
+	printf("* ----------------\n");
+	printf("* Code in C\n");
+	printf("* ----------------\n");
+
+	printf(" int main(int argc, char* argv[]) {\n");
+	
+	/* Declarations Part */
+	Tree *mDecl = root->body.program.decl;
+	while(NULL != mDecl)
+	{
+		Tree *mType = mDecl->body.declare.type;
+		if(strcmp("UNDEFINED", mType->body.terminal))
+			printf("\t %s %s;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+
+		mDecl = mDecl->body.declare.decl;
+	}
+	printf("\n");
+
+	getStatSeq(root->body.program.statSeq, 0);	
+	printf("\n");
+
+	return 0;
+}
+
+
+#line 939 "parser.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -697,14 +1002,14 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 571 "parser.y" /* yacc.c:355  */
+#line 876 "parser.y" /* yacc.c:355  */
 
-	int	ival;
-	char	cval;
-	char	*sval;
-	struct tree	*tval;
+int	ival;
+char	cval;
+char	*sval;
+struct tree	*tval;
 
-#line 708 "parser.tab.c" /* yacc.c:355  */
+#line 1013 "parser.tab.c" /* yacc.c:355  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
@@ -719,7 +1024,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 723 "parser.tab.c" /* yacc.c:358  */
+#line 1028 "parser.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -1019,9 +1324,9 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   628,   628,   633,   634,   638,   639,   643,   644,   648,
-     649,   650,   651,   655,   656,   660,   664,   665,   669,   673,
-     677,   678,   682,   683,   687,   688,   692,   693,   694,   695
+       0,   933,   933,   941,   948,   952,   953,   957,   958,   962,
+     963,   964,   965,   969,   970,   974,   978,   979,   983,   987,
+     991,   992,   996,   997,  1001,  1002,  1006,  1007,  1008,  1009
 };
 #endif
 
@@ -1822,176 +2127,185 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 628 "parser.y" /* yacc.c:1646  */
+#line 933 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addProg((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));
-							  printTree((yyval.tval));}
-#line 1829 "parser.tab.c" /* yacc.c:1646  */
+							//  printTree($$);
+							  printSym();
+							  genCode((yyval.tval));
+							}
+#line 2137 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 633 "parser.y" /* yacc.c:1646  */
-    { (yyval.tval) = addDecl((yyvsp[-5].sval), (yyvsp[-4].sval), (yyvsp[-3].sval), (yyvsp[-2].tval), (yyvsp[-1].cval), (yyvsp[0].tval)); }
-#line 1835 "parser.tab.c" /* yacc.c:1646  */
+#line 941 "parser.y" /* yacc.c:1646  */
+    { if(-1 != defineVar((yyvsp[-4].sval), (yyvsp[-2].tval)))
+							  { 
+								(yyval.tval) = addDecl((yyvsp[-5].sval), (yyvsp[-4].sval), (yyvsp[-3].sval), (yyvsp[-2].tval), (yyvsp[-1].cval), (yyvsp[0].tval)); 
+							  }
+							  else
+								(yyval.tval) = (yyvsp[0].tval);
+							}
+#line 2149 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 634 "parser.y" /* yacc.c:1646  */
+#line 948 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 1841 "parser.tab.c" /* yacc.c:1646  */
+#line 2155 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 638 "parser.y" /* yacc.c:1646  */
+#line 952 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 1847 "parser.tab.c" /* yacc.c:1646  */
+#line 2161 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 639 "parser.y" /* yacc.c:1646  */
+#line 953 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 1853 "parser.tab.c" /* yacc.c:1646  */
+#line 2167 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 643 "parser.y" /* yacc.c:1646  */
+#line 957 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmtSeq((yyvsp[-2].tval), (yyvsp[-1].cval), (yyvsp[0].tval)); }
-#line 1859 "parser.tab.c" /* yacc.c:1646  */
+#line 2173 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 644 "parser.y" /* yacc.c:1646  */
+#line 958 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL; }
-#line 1865 "parser.tab.c" /* yacc.c:1646  */
+#line 2179 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 648 "parser.y" /* yacc.c:1646  */
+#line 962 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_ASSIGN);}
-#line 1871 "parser.tab.c" /* yacc.c:1646  */
+#line 2185 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 649 "parser.y" /* yacc.c:1646  */
+#line 963 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_IF);}
-#line 1877 "parser.tab.c" /* yacc.c:1646  */
+#line 2191 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 650 "parser.y" /* yacc.c:1646  */
+#line 964 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WHILE);}
-#line 1883 "parser.tab.c" /* yacc.c:1646  */
+#line 2197 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 651 "parser.y" /* yacc.c:1646  */
+#line 965 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WRITE);}
-#line 1889 "parser.tab.c" /* yacc.c:1646  */
+#line 2203 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 655 "parser.y" /* yacc.c:1646  */
+#line 969 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign1((yyvsp[-2].sval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 1895 "parser.tab.c" /* yacc.c:1646  */
+#line 2209 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 656 "parser.y" /* yacc.c:1646  */
+#line 970 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign2((yyvsp[-2].sval), (yyvsp[-1].sval), (yyvsp[0].sval));}
-#line 1901 "parser.tab.c" /* yacc.c:1646  */
+#line 2215 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 660 "parser.y" /* yacc.c:1646  */
+#line 974 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addIf((yyvsp[-5].sval), (yyvsp[-4].tval), (yyvsp[-3].sval), (yyvsp[-2].tval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 1907 "parser.tab.c" /* yacc.c:1646  */
+#line 2221 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 664 "parser.y" /* yacc.c:1646  */
+#line 978 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addElseCl((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 1913 "parser.tab.c" /* yacc.c:1646  */
+#line 2227 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 665 "parser.y" /* yacc.c:1646  */
+#line 979 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 1919 "parser.tab.c" /* yacc.c:1646  */
+#line 2233 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 669 "parser.y" /* yacc.c:1646  */
+#line 983 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWhile((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 1925 "parser.tab.c" /* yacc.c:1646  */
+#line 2239 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 673 "parser.y" /* yacc.c:1646  */
+#line 987 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWrite((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 1931 "parser.tab.c" /* yacc.c:1646  */
+#line 2245 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 677 "parser.y" /* yacc.c:1646  */
+#line 991 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr1((yyvsp[0].tval));}
-#line 1937 "parser.tab.c" /* yacc.c:1646  */
+#line 2251 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 678 "parser.y" /* yacc.c:1646  */
+#line 992 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr2((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 1943 "parser.tab.c" /* yacc.c:1646  */
+#line 2257 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 682 "parser.y" /* yacc.c:1646  */
+#line 996 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 1949 "parser.tab.c" /* yacc.c:1646  */
+#line 2263 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 683 "parser.y" /* yacc.c:1646  */
+#line 997 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr2((yyvsp[0].tval));}
-#line 1955 "parser.tab.c" /* yacc.c:1646  */
+#line 2269 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 687 "parser.y" /* yacc.c:1646  */
+#line 1001 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 1961 "parser.tab.c" /* yacc.c:1646  */
+#line 2275 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 688 "parser.y" /* yacc.c:1646  */
+#line 1002 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm2((yyvsp[0].tval));}
-#line 1967 "parser.tab.c" /* yacc.c:1646  */
+#line 2281 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 692 "parser.y" /* yacc.c:1646  */
+#line 1006 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 1973 "parser.tab.c" /* yacc.c:1646  */
+#line 2287 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 693 "parser.y" /* yacc.c:1646  */
+#line 1007 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addNumber((yyvsp[0].ival));}
-#line 1979 "parser.tab.c" /* yacc.c:1646  */
+#line 2293 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 694 "parser.y" /* yacc.c:1646  */
+#line 1008 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 1985 "parser.tab.c" /* yacc.c:1646  */
+#line 2299 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 695 "parser.y" /* yacc.c:1646  */
+#line 1009 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addFactor((yyvsp[-2].cval), (yyvsp[-1].tval), (yyvsp[0].cval));}
-#line 1991 "parser.tab.c" /* yacc.c:1646  */
+#line 2305 "parser.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1995 "parser.tab.c" /* yacc.c:1646  */
+#line 2309 "parser.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -2219,7 +2533,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 698 "parser.y" /* yacc.c:1906  */
+#line 1012 "parser.y" /* yacc.c:1906  */
 
 
 int yyerror(char *s) {

@@ -2,6 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "common.h" 
+
+extern SYMTABLE *symTable;
+
+char *tokens[] = { "INTEGER", "BOOLEAN", "UNDEFINED"};
 
 enum treeType { T_PROGRAM, T_DECL, T_STMTSEQ, T_TERMINAL, T_STMT, T_ASSIGN, T_IF, T_WHILE, T_WRITE, T_READ, T_EXPR, 
 		T_OP, T_NO_OP, T_SIMPLE_EXPR, T_TERM, T_FACTOR, T_NUMBER, T_ELSE};
@@ -564,15 +569,315 @@ int printTree (Tree* root)
 	return 1;
 }
 
+int printSym()
+{
+	SYMTABLE *s, *tmp = NULL;
+
+	printf("* -----------------------------------------------------------------\n\n");
+	printf("\t\t\tSymbol Table\n");
+	printf("* -------------------------------------------------\n");
+	printf("\tId\tLexeme\t\t\tType\n");
+	printf("* -------------------------------------------------\n");
+	HASH_ITER(hh, symTable, s, tmp)
+	{
+		printf("\t%d\t%-20s\t%-20s\n", s->index, s->key, s->type);
+	}
+	printf("* -----------------------------------------------------------------\n");
+
+	return 0;
+}
+
+int defineVar(char* ident, Tree* type)
+{
+	SYMTABLE *s = NULL;
+
+	printf("* %s is being defined as %s\n", ident, type->body.terminal);
+
+	/* Defining a variable if it is not defined */
+	HASH_FIND_STR( symTable, ident, s);
+	if(s)
+	{
+		if(!strcmp("UNDEFINED", s->type))
+		{
+			s->type = type->body.terminal;
+		}
+		else
+		{
+			printf("*** %s is already defined as %s ***\n", ident, type->body.terminal);
+			return -1;
+		}
+	}
+	return 1;
+}
+
+#define	NIL		0
+#define	CHECK_INT	1
+#define	CHECK_BOOL	2
+
+int getFactor( Tree* mFactor, int check)
+{
+	if(T_TERMINAL == mFactor->type)
+	{
+		printf("%s", mFactor->body.terminal);
+		if(CHECK_INT == 1)
+		{
+			SYMTABLE *s = NULL;
+			HASH_FIND_STR( symTable, mFactor->body.terminal, s);
+			if(s)
+			{
+				if(strcmp("int", s->type))
+				{
+					printf("(*** Not a Integer ***)");
+				}
+			}
+		}
+		return NIL;
+	}
+	else if(T_FACTOR == mFactor->type)
+	{
+		printf("(");
+		int ch = getExpr(mFactor->body.factor.expr);
+		printf(")");
+		return ch;
+	}
+	else if(T_NUMBER == mFactor->type)
+	{
+		if( 0 > mFactor->body.number || 2147483647 < mFactor->body.number)
+			printf("%d (*** Out of Range ***)", mFactor->body.number);
+		else
+			printf("%d", mFactor->body.number);
+	}
+}
+
+int getTerm( Tree* mTerm, int check)
+{
+	if(T_NO_OP == mTerm->body.term.type)
+	{
+		return getFactor(mTerm->body.term.arg.factor, check);
+	}
+	else if(T_OP == mTerm->body.term.type)
+	{
+		getFactor(mTerm->body.term.arg.exprOP.factorl, CHECK_INT);
+		printf(" %s ", mTerm->body.term.arg.exprOP.C_OP2);
+		getFactor(mTerm->body.term.arg.exprOP.factorr, CHECK_INT);
+		return CHECK_INT;
+	}
+}
+
+int getSim( Tree* mSim, int check)
+{
+	if(T_NO_OP == mSim->body.simexpression.type)
+	{
+		return getTerm(mSim->body.simexpression.arg.term, check);
+	}
+	else if(T_OP == mSim->body.simexpression.type)
+	{
+		getTerm(mSim->body.simexpression.arg.exprOP.terml, CHECK_INT);
+		printf(" %s ", mSim->body.simexpression.arg.exprOP.C_OP3);
+		getTerm(mSim->body.simexpression.arg.exprOP.termr, CHECK_INT);
+		return CHECK_INT;
+	}
+}
+
+int getExpr( Tree* mExpr)
+{
+	if(T_NO_OP == mExpr->body.expression.type)
+	{
+		return getSim(mExpr->body.expression.arg.simpleExpr, NIL);
+	}
+	else if(T_OP == mExpr->body.expression.type)
+	{
+		getSim(mExpr->body.expression.arg.exprOP.simpleExprl, CHECK_INT);
+		printf(" %s ", mExpr->body.expression.arg.exprOP.C_OP4);
+		getSim(mExpr->body.expression.arg.exprOP.simpleExprr, CHECK_INT);
+		return CHECK_BOOL;
+	}
+}
+
+int getStatSeq(Tree *mStatSeq, int level)
+{
+	int ch = 0;
+	/* Statement Sequence Part */
+	while(NULL != mStatSeq)
+	{
+		Tree *mStat = mStatSeq->body.statementseq.stmt;
+
+		switch(mStat->body.statement.type)
+		{
+			case T_ASSIGN:;
+				Tree *mAsgn = mStat->body.statement.stmt;
+				
+				if(T_READ == mAsgn->body.assign.type)
+				{
+					SYMTABLE *s = NULL;
+					HASH_FIND_STR( symTable, mAsgn->body.assign.C_IDENT, s);
+					if(s)
+					{
+						if(!strcmp("int", s->type))
+						{
+							printf("%*c %s = %s;\n", level, 9, mAsgn->body.assign.C_IDENT, 
+									mAsgn->body.assign.arg3.C_READINT);
+						}
+						else
+						{
+							printf("%*c *** %s is not an integer ***\n", level, 9, mAsgn->body.assign.C_IDENT);
+							break;
+						}
+					}
+				}
+				else if(T_EXPR == mAsgn->body.assign.type)
+				{
+					SYMTABLE *s = NULL;
+					HASH_FIND_STR( symTable, mAsgn->body.assign.C_IDENT, s);
+					if(s)
+					{
+						if(!strcmp("UNDEFINED", s->type))
+						{
+							printf("%*c *** %s is not defined ***\n", level, 9, mAsgn->body.assign.C_IDENT);
+							break;
+						}
+					}
+					printf("%*c %s = ", level, 9, mAsgn->body.assign.C_IDENT);
+					ch = getExpr(mAsgn->body.assign.arg3.expr);
+					if(CHECK_INT == ch)
+					{
+						s = NULL;
+						HASH_FIND_STR( symTable, mAsgn->body.assign.C_IDENT, s);
+						if(s)
+						{
+							if(strcmp("int", s->type))
+							{
+								printf(";\t*** %s is not an integer ***\n", mAsgn->body.assign.C_IDENT);
+							}
+							else
+								printf(";\n");
+						}
+					}
+					else if(CHECK_BOOL == ch)
+					{
+						s = NULL;
+						HASH_FIND_STR( symTable, mAsgn->body.assign.C_IDENT, s);
+						if(s)
+						{
+							if(strcmp("bool", s->type))
+							{
+								printf(";\t*** %s is not an boolean ***\n", mAsgn->body.assign.C_IDENT);
+							}
+							else
+								printf(";\n");
+						}
+					}
+					else
+						printf(";\n");
+				}
+				break;
+
+			case T_IF:;
+				printf("\n");
+
+				Tree *mIf = mStat->body.statement.stmt;
+				printf("%*c if (", level, 9); 
+				ch = getExpr(mIf->body.ifcl.expr);
+				if(CHECK_INT == ch || NIL == ch)
+				{
+					printf(")\t *** Expr result is not an boolean ***\n");
+				}
+				else
+					printf(") {\n");
+
+				getStatSeq(mIf->body.ifcl.statSeq, level + 12);	
+
+				Tree *mEl = mIf->body.ifcl.elseCl;
+				if(NULL != mEl)
+				{
+					printf("%*c }\n", level, 9);
+					printf("%*c else {\n", level, 9); 
+					getStatSeq(mEl->body.elsecl.statSeq, level + 12);	
+					printf("%*c }\n", level, 9);
+				}
+				else
+					printf("%*c }\n", level, 9);
+
+				break;
+
+			case T_WHILE:;
+				printf("\n");
+
+				Tree *mWhile = mStat->body.statement.stmt;
+				printf("%*c while (", level, 9); 
+				ch = getExpr(mWhile->body.whilecl.expr);
+				if(CHECK_INT == ch || NIL == ch)
+				{
+					printf(")\t *** Expr result is not an boolean ***\n");
+				}
+				else
+					printf(") {\n");
+
+				getStatSeq(mWhile->body.whilecl.statSeq, level + 12);	
+				printf("%*c }\n", level, 9);
+
+				break;
+
+			case T_WRITE:;
+				printf("\n");
+
+				Tree *mWrite = mStat->body.statement.stmt;
+				printf("%*c %s ", level, 9, mWrite->body.writeint.C_WRITEINT); 
+
+				ch = getExpr(mWrite->body.writeint.expr);
+				if(CHECK_BOOL == ch)
+				{
+					printf(";\t*** writeInt cannot write boolean ***\n");
+				}
+				else
+					printf(";\n");
+				break;
+
+			default:
+				printf("* :-|\n"); 
+				break;
+		}
+		mStatSeq = mStatSeq->body.statementseq.statSeq;
+		
+	}
+	return 0;
+}
+
+int genCode(Tree* root)
+{
+	printf("* ----------------\n");
+	printf("* Code in C\n");
+	printf("* ----------------\n");
+
+	printf(" int main(int argc, char* argv[]) {\n");
+	
+	/* Declarations Part */
+	Tree *mDecl = root->body.program.decl;
+	while(NULL != mDecl)
+	{
+		Tree *mType = mDecl->body.declare.type;
+		if(strcmp("UNDEFINED", mType->body.terminal))
+			printf("\t %s %s;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+
+		mDecl = mDecl->body.declare.decl;
+	}
+	printf("\n");
+
+	getStatSeq(root->body.program.statSeq, 0);	
+	printf("\n");
+
+	return 0;
+}
+
 %}
 
 /* Symbols */
 %union
 {
-	int	ival;
-	char	cval;
-	char	*sval;
-	struct tree	*tval;
+int	ival;
+char	cval;
+char	*sval;
+struct tree	*tval;
 };
 
 %token <cval> LP
@@ -626,11 +931,20 @@ int printTree (Tree* root)
 
 Program:
 	PROGRAM	Declarations BEGIN_K Stmtseq END_K	{ $$ = addProg($1, $2, $3, $4, $5);
-							  printTree($$);}
+							//  printTree($$);
+							  printSym();
+							  genCode($$);
+							}
 	;
 
 Declarations:
-	VAR IDENTIFIER AS Type SC Declarations		{ $$ = addDecl($1, $2, $3, $4, $5, $6); }
+	VAR IDENTIFIER AS Type SC Declarations		{ if(-1 != defineVar($2, $4))
+							  { 
+								$$ = addDecl($1, $2, $3, $4, $5, $6); 
+							  }
+							  else
+								$$ = $6;
+							}
 	| /* Epsilon */					{ $$ = NULL;}
 	;
 

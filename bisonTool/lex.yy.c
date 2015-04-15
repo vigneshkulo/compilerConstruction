@@ -524,8 +524,14 @@ char *yytext;
 	#include <stdlib.h>
 	#include <stdio.h>
 	#include "parser.tab.h"
+	#ifndef  COMMON_H  
+	#include "common.h"
+	#endif
 
-#line 529 "lex.yy.c"
+	int symIndex = 0;
+        SYMTABLE *symTable = NULL;
+        SYMTABLE *s, *tmp = NULL;
+#line 535 "lex.yy.c"
 
 #define INITIAL 0
 
@@ -712,10 +718,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 13 "syntax.l"
+#line 19 "syntax.l"
 
 
-#line 719 "lex.yy.c"
+#line 725 "lex.yy.c"
 
 	if ( !(yy_init) )
 		{
@@ -800,7 +806,7 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 15 "syntax.l"
+#line 21 "syntax.l"
 {
 			yylval.ival = yytext[0];
 			return LP;
@@ -808,7 +814,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 20 "syntax.l"
+#line 26 "syntax.l"
 {
 			yylval.cval = yytext[0];
 			return RP;
@@ -816,7 +822,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 25 "syntax.l"
+#line 31 "syntax.l"
 {
 			yylval.cval = yytext[0];
 			return SC;
@@ -824,7 +830,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 30 "syntax.l"
+#line 36 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -833,7 +839,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 36 "syntax.l"
+#line 42 "syntax.l"
 {
 					yylval.sval = malloc(strlen(yytext));
 					strncpy(yylval.sval, yytext, strlen(yytext));
@@ -842,7 +848,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 42 "syntax.l"
+#line 48 "syntax.l"
 {
 					yylval.sval = malloc(strlen(yytext));
 					strncpy(yylval.sval, yytext, strlen(yytext));
@@ -851,7 +857,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 48 "syntax.l"
+#line 54 "syntax.l"
 {
 					yylval.sval = malloc(strlen(yytext));
 					strncpy(yylval.sval, yytext, strlen(yytext));
@@ -860,7 +866,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 53 "syntax.l"
+#line 59 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -869,7 +875,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 58 "syntax.l"
+#line 64 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -878,7 +884,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 63 "syntax.l"
+#line 69 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -887,7 +893,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 68 "syntax.l"
+#line 74 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -896,7 +902,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 73 "syntax.l"
+#line 79 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -905,7 +911,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 78 "syntax.l"
+#line 84 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -914,7 +920,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 83 "syntax.l"
+#line 89 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -923,7 +929,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 88 "syntax.l"
+#line 94 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -932,7 +938,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 93 "syntax.l"
+#line 99 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -941,7 +947,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 98 "syntax.l"
+#line 104 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -950,7 +956,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 103 "syntax.l"
+#line 109 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -959,7 +965,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 108 "syntax.l"
+#line 114 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -968,7 +974,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 114 "syntax.l"
+#line 120 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -977,7 +983,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 119 "syntax.l"
+#line 125 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -986,7 +992,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 125 "syntax.l"
+#line 131 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -995,7 +1001,7 @@ YY_RULE_SETUP
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 130 "syntax.l"
+#line 136 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
@@ -1005,12 +1011,12 @@ YY_RULE_SETUP
 case 24:
 /* rule 24 can match eol */
 YY_RULE_SETUP
-#line 136 "syntax.l"
+#line 142 "syntax.l"
 { /* ignore */ }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 138 "syntax.l"
+#line 144 "syntax.l"
 {
 			yylval.ival = atoi(yytext);
 			return NUMBER;
@@ -1018,24 +1024,36 @@ YY_RULE_SETUP
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 143 "syntax.l"
+#line 149 "syntax.l"
 {
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
+
+                        /* Adding to hash table if it is not added already */
+                        HASH_FIND_STR( symTable, yytext, s);
+                        if(!s)
+                        {
+                                s = (SYMTABLE*) malloc(sizeof(SYMTABLE));
+                                strncpy(s->key, yytext,30);
+                                s->index = ++symIndex;
+                                s->type = "UNDEFINED";
+                                HASH_ADD_STR( symTable, key, s );
+                        }
+
 			return IDENTIFIER;
 		}
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 149 "syntax.l"
+#line 167 "syntax.l"
 ;
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 151 "syntax.l"
+#line 169 "syntax.l"
 ECHO;
 	YY_BREAK
-#line 1039 "lex.yy.c"
+#line 1057 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2033,7 +2051,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 151 "syntax.l"
+#line 169 "syntax.l"
 
 
 

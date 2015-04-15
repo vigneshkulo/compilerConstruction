@@ -3,14 +3,17 @@ program
    var BIGGER as int ;
    var TEMP as int ;
 begin
+      BIGGER := BIGGER - (SMALLER - BIGGER);
    BIGGER := readInt ;
-   SMALLER := readInt ;
+   TEMP1 := readInt ;
 
    if SMALLER > BIGGER then
-      TEMP := SMALLER ;
-      TEMP1 := 2147483648 ;
+      TEMP1 := SMALLER ;
+      TEMP := 2147483648 ;
       SMALLER := BIGGER ;
       BIGGER := TEMP ;
+   else
+      TEMP := SMALLER;
    end ;
 
    while SMALLER > 0 do

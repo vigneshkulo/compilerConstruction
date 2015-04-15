@@ -3,7 +3,13 @@
 	#include <stdlib.h>
 	#include <stdio.h>
 	#include "parser.tab.h"
+	#ifndef  COMMON_H  
+	#include "common.h"
+	#endif
 
+	int symIndex = 0;
+        SYMTABLE *symTable = NULL;
+        SYMTABLE *s, *tmp = NULL;
 %}
 
 blanks          [ \t\n]+
@@ -143,6 +149,18 @@ number		[1-9][0-9]*|0
 {identifier}	{
 			yylval.sval = malloc(strlen(yytext));
 			strncpy(yylval.sval, yytext, strlen(yytext));
+
+                        /* Adding to hash table if it is not added already */
+                        HASH_FIND_STR( symTable, yytext, s);
+                        if(!s)
+                        {
+                                s = (SYMTABLE*) malloc(sizeof(SYMTABLE));
+                                strncpy(s->key, yytext,30);
+                                s->index = ++symIndex;
+                                s->type = "UNDEFINED";
+                                HASH_ADD_STR( symTable, key, s );
+                        }
+
 			return IDENTIFIER;
 		}
 
