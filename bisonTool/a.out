@@ -1,0 +1,28 @@
+ int main(int argc, char* argv[]) {
+	 int BIGGER;
+	 int SMALLER;
+	 int TEMP;
+
+	 BIGGER = BIGGER - (SMALLER - BIGGER);
+	 BIGGER = readInt;
+
+	 if (SMALLER - BIGGER           	 TEMP = ;
+           	 SMALLER = BIGGER;
+           	 BIGGER = TEMP;
+	 }
+	 else {
+           	 TEMP = SMALLER;
+	 }
+
+	 while (SMALLER < 0) {
+           	 BIGGER = BIGGER - SMALLER;
+
+           	 if (SMALLER > BIGGER) {
+                       	 TEMP = SMALLER;
+                       	 SMALLER = BIGGER;
+                       	 BIGGER = TEMP;
+           	 }
+	 }
+
+	 writeInt BIGGER;
+

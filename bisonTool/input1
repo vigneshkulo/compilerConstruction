@@ -1,4 +1,5 @@
 program 
+   var BIGGER as int ;
    var SMALLER as int ;
    var BIGGER as int ;
    var TEMP as int ;
@@ -16,7 +17,7 @@ begin
       TEMP := SMALLER;
    end ;
 
-   while SMALLER > 0 do
+   while SMALLER < 0 do
       BIGGER := BIGGER - SMALLER ;
 
       if SMALLER > BIGGER then

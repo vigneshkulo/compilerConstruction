@@ -69,12 +69,15 @@
 #include <string.h>
 #include "common.h" 
 
+
+FILE *fp = NULL;
 extern SYMTABLE *symTable;
 
 char *tokens[] = { "INTEGER", "BOOLEAN", "UNDEFINED"};
 
+enum resultType { R_INT, R_BOOL, R_UNDEF}; 
 enum treeType { T_PROGRAM, T_DECL, T_STMTSEQ, T_TERMINAL, T_STMT, T_ASSIGN, T_IF, T_WHILE, T_WRITE, T_READ, T_EXPR, 
-		T_OP, T_NO_OP, T_SIMPLE_EXPR, T_TERM, T_FACTOR, T_NUMBER, T_ELSE};
+		T_OP, T_NO_OP, T_SIMPLE_EXPR, T_TERM, T_FACTOR, T_NUMBER, T_ELSE, T_IDENT, T_LIT, T_PAR_EXPR};
 
 typedef struct tree {
 	enum treeType type;
@@ -132,6 +135,7 @@ typedef struct tree {
 					struct tree* simpleExprr;
 				}exprOP;
 			}arg;
+			enum resultType res;
 		}expression;
 
 		struct{
@@ -144,6 +148,7 @@ typedef struct tree {
 					struct tree* termr;
 				}exprOP;
 			}arg;
+			enum resultType res;
 		}simexpression;
 
 		struct{
@@ -156,12 +161,21 @@ typedef struct tree {
 					struct tree* factorr;
 				}exprOP;
 			}arg;
+			enum resultType res;
 		}term;
 
 		struct{
-			char C_LP;
-			struct tree* expr;
-			char C_RP;
+			enum treeType type;
+			union{
+				char* ident;
+				char* literal;
+				struct {
+					char C_LP;
+					struct tree* expr;
+					char C_RP;
+				}parenExpr;
+			}arg;
+			enum resultType res;
 		}factor;
 
 		struct{
@@ -287,6 +301,7 @@ Tree* addExpr1(Tree* simple)
 	cur->type = T_EXPR;
 	cur->body.expression.type = T_NO_OP;
 	cur->body.expression.arg.simpleExpr = simple;
+	cur->body.expression.res = R_UNDEF;
 
 	return cur;
 }
@@ -300,6 +315,7 @@ Tree* addExpr2(Tree* simplel, char* Op4, Tree* simpler)
 	cur->body.expression.arg.exprOP.simpleExprl = simplel;
 	cur->body.expression.arg.exprOP.C_OP4 = Op4;
 	cur->body.expression.arg.exprOP.simpleExprr = simpler;
+	cur->body.expression.res = R_UNDEF;
 
 	return cur;
 }
@@ -313,6 +329,7 @@ Tree* addSimpleExpr1(Tree* terml, char* Op3, Tree* termr)
 	cur->body.simexpression.arg.exprOP.terml = terml;
 	cur->body.simexpression.arg.exprOP.C_OP3 = Op3;
 	cur->body.simexpression.arg.exprOP.termr = termr;
+	cur->body.simexpression.res = R_UNDEF;
 
 	return cur;
 }
@@ -324,6 +341,7 @@ Tree* addSimpleExpr2(Tree* term)
 	cur->type = T_SIMPLE_EXPR;
 	cur->body.simexpression.type = T_NO_OP;
 	cur->body.simexpression.arg.term = term;
+	cur->body.simexpression.res = R_UNDEF;
 
 	return cur;
 }
@@ -337,6 +355,7 @@ Tree* addTerm1(Tree* factorl, char* Op2, Tree* factorr)
 	cur->body.term.arg.exprOP.factorl = factorl;
 	cur->body.term.arg.exprOP.C_OP2 = Op2;
 	cur->body.term.arg.exprOP.factorr = factorr;
+	cur->body.term.res = R_UNDEF;
 
 	return cur;
 }
@@ -348,6 +367,31 @@ Tree* addTerm2(Tree* factor)
 	cur->type = T_TERM;
 	cur->body.term.type = T_NO_OP;
 	cur->body.term.arg.factor = factor;
+	cur->body.term.res = R_UNDEF;
+
+	return cur;
+}
+
+Tree* addIdent(char* ident)
+{
+	Tree *cur = (Tree*) malloc (sizeof(Tree));
+
+	cur->type = T_FACTOR;
+	cur->body.factor.type = T_IDENT;
+	cur->body.factor.arg.ident = ident;
+	cur->body.factor.res = R_UNDEF;
+
+	return cur;
+}
+
+Tree* addLiteral(char* literal)
+{
+	Tree *cur = (Tree*) malloc (sizeof(Tree));
+
+	cur->type = T_FACTOR;
+	cur->body.factor.type = T_LIT;
+	cur->body.factor.arg.literal = literal;
+	cur->body.factor.res = R_UNDEF;
 
 	return cur;
 }
@@ -357,9 +401,11 @@ Tree* addFactor(char Lp, Tree* expr, char Rp)
 	Tree *cur = (Tree*) malloc (sizeof(Tree));
 
 	cur->type = T_FACTOR;
-	cur->body.factor.C_LP = Lp;
-	cur->body.factor.expr = expr;
-	cur->body.factor.C_RP = Rp;
+	cur->body.factor.type = T_PAR_EXPR;
+	cur->body.factor.arg.parenExpr.C_LP = Lp;
+	cur->body.factor.arg.parenExpr.expr = expr;
+	cur->body.factor.arg.parenExpr.C_RP = Rp;
+	cur->body.factor.res = R_UNDEF;
 
 	return cur;
 }
@@ -502,11 +548,16 @@ int printTree (Tree* root)
 		case T_ASSIGN:	
 				printf("%s ", root->body.assign.C_IDENT);
 				printf("%s ", root->body.assign.C_ASGN);
+
 				if(T_EXPR == root->body.assign.type)
 				{
+					#ifdef PR
 					printf(" Expr(");
+					#endif
 					printTree(root->body.assign.arg3.expr);	
+					#ifdef PR
 					printf(") ");
+					#endif
 				}
 				else
 					printf("%s ", root->body.assign.arg3.C_READINT);
@@ -515,66 +566,117 @@ int printTree (Tree* root)
 		case T_EXPR:	
 				if(T_NO_OP == root->body.expression.type)
 				{
+					#ifdef PR
 					printf(" SimpleExpr(");
+					#endif
 					printTree(root->body.expression.arg.simpleExpr);	
+					#ifdef PR
 					printf(") ");
+					#endif
 				}
 				else if(T_OP == root->body.expression.type)
 				{
+					#ifdef PR
 					printf(" SimpleExprL(");
+					#endif
 					printTree(root->body.expression.arg.exprOP.simpleExprl);	
+					#ifdef PR
 					printf(") ");
+					#endif
 					printf("%s ", root->body.expression.arg.exprOP.C_OP4);
+					#ifdef PR
 					printf(" SimpleExprR(");
+					#endif
 					printTree(root->body.expression.arg.exprOP.simpleExprr);	
+					#ifdef PR
 					printf(") ");
+					#endif
 				}
 				break;
 
 		case T_SIMPLE_EXPR:	
 				if(T_NO_OP == root->body.simexpression.type)
 				{
+					#ifdef PR
 					printf(" Term(");
+					#endif
 					printTree(root->body.simexpression.arg.term);	
+					#ifdef PR
 					printf(") ");
+					#endif
 				}
 				else if(T_OP == root->body.simexpression.type)
 				{
+					#ifdef PR
 					printf(" TermL(");
+					#endif
 					printTree(root->body.simexpression.arg.exprOP.terml);	
+					#ifdef PR
 					printf(") ");
+					#endif
 					printf("%s ", root->body.simexpression.arg.exprOP.C_OP3);
+					#ifdef PR
 					printf(" TermR(");
+					#endif
 					printTree(root->body.simexpression.arg.exprOP.termr);	
+					#ifdef PR
 					printf(") ");
+					#endif
 				}
 				break;
 	
 		case T_TERM:	
 				if(T_NO_OP == root->body.term.type)
 				{
+					#ifdef PR
 					printf(" Factor(");
+					#endif
 					printTree(root->body.term.arg.factor);	
+					#ifdef PR
 					printf(") ");
+					#endif
 				}
 				else if(T_OP == root->body.term.type)
 				{
+					#ifdef PR
 					printf(" FactorL(");
+					#endif
 					printTree(root->body.term.arg.exprOP.factorl);	
+					#ifdef PR
 					printf(") ");
+					#endif
 					printf("%s ", root->body.term.arg.exprOP.C_OP2);
+					#ifdef PR
 					printf(" FactorR(");
+					#endif
 					printTree(root->body.term.arg.exprOP.factorr);	
+					#ifdef PR
 					printf(") ");
+					#endif
 				}
 				break;
 	
 		case T_FACTOR:	
-				printf("%c ", root->body.factor.C_LP);
-				printf(" Expr(");
-				printTree(root->body.factor.expr);	
-				printf(") ");
-				printf("%c ", root->body.factor.C_RP);
+				if(T_IDENT == root->body.factor.type)
+				{
+					printf("%s ", root->body.factor.arg.ident);
+				}
+				else if(T_LIT == root->body.factor.type)
+				{
+					printf("%s ", root->body.factor.arg.literal);
+				}
+				else if(T_PAR_EXPR == root->body.factor.type)
+				{
+					printf("%c ", root->body.factor.arg.parenExpr.C_LP);
+					#ifdef PR
+					printf(" Expr(");
+					#endif
+					printTree(root->body.factor.arg.parenExpr.expr);	
+					#ifdef PR
+					printf(") ");
+					#endif
+					printf("%c ", root->body.factor.arg.parenExpr.C_RP);
+				}
 				break;
 
 		case T_IF:	
@@ -656,8 +758,6 @@ int defineVar(char* ident, Tree* type)
 {
 	SYMTABLE *s = NULL;
 
-	printf("* %s is being defined as %s\n", ident, type->body.terminal);
-
 	/* Defining a variable if it is not defined */
 	HASH_FIND_STR( symTable, ident, s);
 	if(s)
@@ -668,7 +768,7 @@ int defineVar(char* ident, Tree* type)
 		}
 		else
 		{
-			printf("*** %s is already defined as %s ***\n", ident, type->body.terminal);
+			printf("error: redefinition of ‘%s’\n", ident);
 			return -1;
 		}
 	}
@@ -681,36 +781,58 @@ int defineVar(char* ident, Tree* type)
 
 int getFactor( Tree* mFactor, int check)
 {
-	if(T_TERMINAL == mFactor->type)
+	if(T_NUMBER == mFactor->type)
 	{
-		printf("%s", mFactor->body.terminal);
-		if(CHECK_INT == 1)
+		#ifdef DE
+		printf("-> Number ");
+		#endif
+
+		if( 0 > mFactor->body.number || 2147483647 < mFactor->body.number)
 		{
-			SYMTABLE *s = NULL;
-			HASH_FIND_STR( symTable, mFactor->body.terminal, s);
-			if(s)
+			printf("error: integer constant is too large for its type: %d\n", mFactor->body.number);
+		}
+		else
+			fprintf(fp, "%d", mFactor->body.number);
+
+		mFactor->body.factor.res = R_INT;
+	}
+	else if(T_IDENT == mFactor->body.factor.type)
+	{
+		fprintf(fp, "%s", mFactor->body.factor.arg.ident);
+		SYMTABLE *s = NULL;
+		HASH_FIND_STR( symTable, mFactor->body.factor.arg.ident, s);
+		if(s)
+		{
+			if(!strcmp("int", s->type))
 			{
-				if(strcmp("int", s->type))
-				{
-					printf("(*** Not a Integer ***)");
-				}
+				mFactor->body.factor.res = R_INT;
+				#ifdef DE
+				printf("-> INT ");
+				#endif
+				return 1;
+			}
+			else if(!strcmp("bool", s->type))
+			{
+				mFactor->body.factor.res = R_BOOL;
+				#ifdef DE
+				printf("-> BOOL ");
+				#endif
+				return 2;
 			}
 		}
-		return NIL;
 	}
-	else if(T_FACTOR == mFactor->type)
+	else if(T_PAR_EXPR == mFactor->body.factor.type)
 	{
-		printf("(");
-		int ch = getExpr(mFactor->body.factor.expr);
+		#ifdef DE
+		printf("-> ( ");
+		#endif
+		fprintf(fp, "(");
+		getExpr(mFactor->body.factor.arg.parenExpr.expr);
+		#ifdef DE
 		printf(")");
-		return ch;
-	}
-	else if(T_NUMBER == mFactor->type)
-	{
-		if( 0 > mFactor->body.number || 2147483647 < mFactor->body.number)
-			printf("%d (*** Out of Range ***)", mFactor->body.number);
-		else
-			printf("%d", mFactor->body.number);
+		#endif
+		fprintf(fp, ")");
+		mFactor->body.factor.res = mFactor->body.factor.arg.parenExpr.expr->body.expression.res;
 	}
 }
 
@@ -718,13 +840,50 @@ int getTerm( Tree* mTerm, int check)
 {
 	if(T_NO_OP == mTerm->body.term.type)
 	{
-		return getFactor(mTerm->body.term.arg.factor, check);
+		#ifdef DE
+		printf("-> Factor ");
+		#endif
+		getFactor(mTerm->body.term.arg.factor, check);
+		#ifdef DE
+		printf("{%d}", mTerm->body.term.arg.factor->body.factor.res);
+		#endif
+		mTerm->body.term.res = mTerm->body.term.arg.factor->body.factor.res;
 	}
 	else if(T_OP == mTerm->body.term.type)
 	{
-		getFactor(mTerm->body.term.arg.exprOP.factorl, CHECK_INT);
-		printf(" %s ", mTerm->body.term.arg.exprOP.C_OP2);
-		getFactor(mTerm->body.term.arg.exprOP.factorr, CHECK_INT);
+		Tree* mLeft  = mTerm->body.term.arg.exprOP.factorl;
+		Tree* mRight = mTerm->body.term.arg.exprOP.factorr;
+
+		getFactor( mLeft, CHECK_INT);
+		fprintf(fp, " %s ", mTerm->body.term.arg.exprOP.C_OP2);
+		getFactor( mRight, CHECK_INT);
+
+		if(R_INT != mLeft->body.factor.res && R_INT != mRight->body.factor.res)
+		{
+			printf("error: Both operands of '"); 
+			printTree(mTerm);
+			printf("' are not Integers\n");
+		}
+		else if(R_INT != mLeft->body.factor.res)
+		{
+			printf("error: Left operand of '"); 
+			printTree(mTerm);
+			printf("' : '");
+			printTree(mLeft);
+			printf("' is not an Integer\n");
+		}
+		else if(R_INT != mRight->body.factor.res)
+		{
+			printf("error: Right operand of '"); 
+			printTree(mTerm);
+			printf("' : '");
+			printTree(mRight);
+			printf("' is not an Integer\n");
+		}
+		else if(R_UNDEF == mTerm->body.term.res)
+		{
+			mTerm->body.term.res = R_INT;
+		}
 		return CHECK_INT;
 	}
 }
@@ -733,13 +892,64 @@ int getSim( Tree* mSim, int check)
 {
 	if(T_NO_OP == mSim->body.simexpression.type)
 	{
-		return getTerm(mSim->body.simexpression.arg.term, check);
+		#ifdef DE
+		printf("-> Term ");
+		#endif
+		getTerm(mSim->body.simexpression.arg.term, check);
+		mSim->body.simexpression.res = mSim->body.simexpression.arg.term->body.term.res;
 	}
 	else if(T_OP == mSim->body.simexpression.type)
 	{
-		getTerm(mSim->body.simexpression.arg.exprOP.terml, CHECK_INT);
-		printf(" %s ", mSim->body.simexpression.arg.exprOP.C_OP3);
-		getTerm(mSim->body.simexpression.arg.exprOP.termr, CHECK_INT);
+		Tree* mLeft  = mSim->body.simexpression.arg.exprOP.terml;
+		Tree* mRight = mSim->body.simexpression.arg.exprOP.termr;
+
+		#ifdef DE
+		printf("-> ( TermL ");
+		#endif
+
+		getTerm( mLeft, CHECK_INT);
+
+		#ifdef DE
+		printf(" ) ( TermR ");
+		#endif
+
+		fprintf(fp, " %s ", mSim->body.simexpression.arg.exprOP.C_OP3);
+		getTerm( mRight, CHECK_INT);
+
+		#ifdef DE
+		printf(" )");
+		#endif
+
+		if(R_INT != mLeft->body.term.res && R_INT != mRight->body.term.res)
+		{
+			printf("error: Both operands of '"); 
+			printTree(mSim);
+			printf("' are not Integers\n");
+		}
+		else if(R_INT != mLeft->body.term.res)
+		{
+			printf("error: Left operand of '"); 
+			printTree(mSim);
+			printf("' : '");
+			printTree(mLeft);
+			printf("' is not an Integer\n");
+		}
+		else if(R_INT != mRight->body.term.res)
+		{
+			printf("error: Right operand of '"); 
+			printTree(mSim);
+			printf("' : '");
+			printTree(mRight);
+			printf("' is not an Integer\n");
+		}
+		else if(R_UNDEF == mSim->body.simexpression.res)
+		{
+			mSim->body.simexpression.res = R_INT;
+		}
+
+		#ifdef DE
+		printf("{%d}", mSim->body.simexpression.res);
+		#endif
 		return CHECK_INT;
 	}
 }
@@ -748,13 +958,61 @@ int getExpr( Tree* mExpr)
 {
 	if(T_NO_OP == mExpr->body.expression.type)
 	{
-		return getSim(mExpr->body.expression.arg.simpleExpr, NIL);
+		#ifdef DE
+		printf(" Expr -> SimpleExpr ");
+		#endif
+		getSim(mExpr->body.expression.arg.simpleExpr, NIL);
+		mExpr->body.expression.res = mExpr->body.expression.arg.simpleExpr->body.simexpression.res;
+		#ifdef DE
+		printf("{%d}", mExpr->body.expression.res);
+		#endif
+		if(R_BOOL == mExpr->body.expression.res)
+			return CHECK_BOOL;
 	}
 	else if(T_OP == mExpr->body.expression.type)
 	{
-		getSim(mExpr->body.expression.arg.exprOP.simpleExprl, CHECK_INT);
-		printf(" %s ", mExpr->body.expression.arg.exprOP.C_OP4);
-		getSim(mExpr->body.expression.arg.exprOP.simpleExprr, CHECK_INT);
+		Tree* mLeft  = mExpr->body.expression.arg.exprOP.simpleExprl;
+		Tree* mRight = mExpr->body.expression.arg.exprOP.simpleExprr;
+
+		#ifdef DE
+		printf(" Expr -> ( SimpleExprL ");
+		#endif
+		getSim( mLeft, CHECK_INT);
+		#ifdef DE
+		printf(" ) ( SimpleExprR ");
+		#endif
+		fprintf(fp, " %s ", mExpr->body.expression.arg.exprOP.C_OP4);
+		getSim( mRight, CHECK_INT);
+		#ifdef DE
+		printf(" )");
+		#endif
+
+		if(R_INT != mLeft->body.simexpression.res && R_INT != mRight->body.simexpression.res)
+		{
+			printf("error: Both operands of '"); 
+			printTree(mExpr);
+			printf("' are not Integers\n");
+		}
+		else if(R_INT != mLeft->body.simexpression.res)
+		{
+			printf("error: Left operand of '"); 
+			printTree(mExpr);
+			printf("' : '");
+			printTree(mLeft);
+			printf("' is not an Integer\n");
+		}
+		else if(R_INT != mRight->body.simexpression.res)
+		{
+			printf("error: Right operand of '"); 
+			printTree(mExpr);
+			printf("' : '");
+			printTree(mRight);
+			printf("' is not an Integer\n");
+		}
+		else if(R_UNDEF == mExpr->body.expression.res)
+		{
+			mExpr->body.expression.res = R_BOOL;
+		}
 		return CHECK_BOOL;
 	}
 }
@@ -780,12 +1038,12 @@ int getStatSeq(Tree *mStatSeq, int level)
 					{
 						if(!strcmp("int", s->type))
 						{
-							printf("%*c %s = %s;\n", level, 9, mAsgn->body.assign.C_IDENT, 
+							fprintf(fp, "%*c %s = %s;\n", level, 9, mAsgn->body.assign.C_IDENT, 
 									mAsgn->body.assign.arg3.C_READINT);
 						}
 						else
 						{
-							printf("%*c *** %s is not an integer ***\n", level, 9, mAsgn->body.assign.C_IDENT);
+							printf("error: readInt operand '%s' is not an integer\n", mAsgn->body.assign.C_IDENT);
 							break;
 						}
 					}
@@ -798,11 +1056,11 @@ int getStatSeq(Tree *mStatSeq, int level)
 					{
 						if(!strcmp("UNDEFINED", s->type))
 						{
-							printf("%*c *** %s is not defined ***\n", level, 9, mAsgn->body.assign.C_IDENT);
+							printf("error: operand '%s' undeclared\n", mAsgn->body.assign.C_IDENT);
 							break;
 						}
 					}
-					printf("%*c %s = ", level, 9, mAsgn->body.assign.C_IDENT);
+					fprintf(fp, "%*c %s = ", level, 9, mAsgn->body.assign.C_IDENT);
 					ch = getExpr(mAsgn->body.assign.arg3.expr);
 					if(CHECK_INT == ch)
 					{
@@ -815,7 +1073,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 								printf(";\t*** %s is not an integer ***\n", mAsgn->body.assign.C_IDENT);
 							}
 							else
-								printf(";\n");
+								fprintf(fp, ";\n");
 						}
 					}
 					else if(CHECK_BOOL == ch)
@@ -826,76 +1084,85 @@ int getStatSeq(Tree *mStatSeq, int level)
 						{
 							if(strcmp("bool", s->type))
 							{
-								printf(";\t*** %s is not an boolean ***\n", mAsgn->body.assign.C_IDENT);
+								printf("error: assigning a boolean to a non-boolean variable '%s' in '", 
+									mAsgn->body.assign.C_IDENT);
+								printTree(mAsgn);
+								printf("'\n");
 							}
 							else
-								printf(";\n");
+								fprintf(fp, ";\n");
 						}
 					}
 					else
-						printf(";\n");
+						fprintf(fp, ";\n");
 				}
 				break;
 
 			case T_IF:;
-				printf("\n");
+				fprintf(fp, "\n");
 
 				Tree *mIf = mStat->body.statement.stmt;
-				printf("%*c if (", level, 9); 
+				fprintf(fp, "%*c if (", level, 9); 
 				ch = getExpr(mIf->body.ifcl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
-					printf(")\t *** Expr result is not an boolean ***\n");
+					printf("error: expression guarding 'if' is not boolean: '");
+					printTree(mIf->body.ifcl.expr);
+					printf("'\n");
 				}
 				else
-					printf(") {\n");
+					fprintf(fp, ") {\n");
 
 				getStatSeq(mIf->body.ifcl.statSeq, level + 12);	
 
 				Tree *mEl = mIf->body.ifcl.elseCl;
 				if(NULL != mEl)
 				{
-					printf("%*c }\n", level, 9);
-					printf("%*c else {\n", level, 9); 
+					fprintf(fp, "%*c }\n", level, 9);
+					fprintf(fp, "%*c else {\n", level, 9); 
 					getStatSeq(mEl->body.elsecl.statSeq, level + 12);	
-					printf("%*c }\n", level, 9);
+					fprintf(fp, "%*c }\n", level, 9);
 				}
 				else
-					printf("%*c }\n", level, 9);
+					fprintf(fp, "%*c }\n", level, 9);
 
 				break;
 
 			case T_WHILE:;
-				printf("\n");
+				fprintf(fp, "\n");
 
 				Tree *mWhile = mStat->body.statement.stmt;
-				printf("%*c while (", level, 9); 
+				fprintf(fp, "%*c while (", level, 9); 
 				ch = getExpr(mWhile->body.whilecl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
-					printf(")\t *** Expr result is not an boolean ***\n");
+					printf("error: expression guarding 'while' is not boolean: '");
+					printTree(mWhile->body.whilecl.expr);
+					printf("'\n");
 				}
 				else
-					printf(") {\n");
+					fprintf(fp, ") {\n");
 
 				getStatSeq(mWhile->body.whilecl.statSeq, level + 12);	
-				printf("%*c }\n", level, 9);
+				fprintf(fp, "%*c }\n", level, 9);
 
 				break;
 
 			case T_WRITE:;
-				printf("\n");
+				fprintf(fp, "\n");
 
 				Tree *mWrite = mStat->body.statement.stmt;
-				printf("%*c %s ", level, 9, mWrite->body.writeint.C_WRITEINT); 
+				fprintf(fp, "%*c %s ", level, 9, mWrite->body.writeint.C_WRITEINT); 
 
 				ch = getExpr(mWrite->body.writeint.expr);
 				if(CHECK_BOOL == ch)
 				{
-					printf(";\t*** writeInt cannot write boolean ***\n");
+					printf("error: writeInt cannot write into a boolean: '");
+					printTree(mWrite->body.writeint.expr);
+					printf("'\n");
 				}
 				else
-					printf(";\n");
+					fprintf(fp, ";\n");
 				break;
 
 			default:
@@ -910,32 +1177,35 @@ int getStatSeq(Tree *mStatSeq, int level)
 
 int genCode(Tree* root)
 {
-	printf("* ----------------\n");
-	printf("* Code in C\n");
-	printf("* ----------------\n");
-
-	printf(" int main(int argc, char* argv[]) {\n");
+char*
+inter
+=
+2500
+;
+	fp = fopen("a.out", "w+");
+//	fp = stdout; 
+	fprintf(fp, " int main(int argc, char* argv[]) {\n");
 	
 	/* Declarations Part */
 	Tree *mDecl = root->body.program.decl;
 	while(NULL != mDecl)
 	{
 		Tree *mType = mDecl->body.declare.type;
-		if(strcmp("UNDEFINED", mType->body.terminal))
-			printf("\t %s %s;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+		if(-1 != defineVar(mDecl->body.declare.C_IDENT, mType))
+			fprintf(fp, "\t %s %s;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
 
 		mDecl = mDecl->body.declare.decl;
 	}
-	printf("\n");
+	fprintf(fp, "\n");
 
 	getStatSeq(root->body.program.statSeq, 0);	
-	printf("\n");
+	fprintf(fp, "\n");
 
 	return 0;
 }
 
 
-#line 939 "parser.tab.c" /* yacc.c:339  */
+#line 1209 "parser.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -1002,14 +1272,14 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 876 "parser.y" /* yacc.c:355  */
+#line 1146 "parser.y" /* yacc.c:355  */
 
 int	ival;
 char	cval;
 char	*sval;
 struct tree	*tval;
 
-#line 1013 "parser.tab.c" /* yacc.c:355  */
+#line 1283 "parser.tab.c" /* yacc.c:355  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
@@ -1024,7 +1294,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 1028 "parser.tab.c" /* yacc.c:358  */
+#line 1298 "parser.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -1324,9 +1594,9 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   933,   933,   941,   948,   952,   953,   957,   958,   962,
-     963,   964,   965,   969,   970,   974,   978,   979,   983,   987,
-     991,   992,   996,   997,  1001,  1002,  1006,  1007,  1008,  1009
+       0,  1203,  1203,  1212,  1213,  1217,  1218,  1222,  1223,  1227,
+    1228,  1229,  1230,  1234,  1235,  1239,  1243,  1244,  1248,  1252,
+    1256,  1257,  1261,  1262,  1266,  1267,  1271,  1272,  1273,  1274
 };
 #endif
 
@@ -2127,185 +2397,180 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 933 "parser.y" /* yacc.c:1646  */
+#line 1203 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addProg((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));
 							//  printTree($$);
-							  printSym();
+							//  printSym();
 							  genCode((yyval.tval));
+							  printSym();
 							}
-#line 2137 "parser.tab.c" /* yacc.c:1646  */
+#line 2408 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 941 "parser.y" /* yacc.c:1646  */
-    { if(-1 != defineVar((yyvsp[-4].sval), (yyvsp[-2].tval)))
-							  { 
-								(yyval.tval) = addDecl((yyvsp[-5].sval), (yyvsp[-4].sval), (yyvsp[-3].sval), (yyvsp[-2].tval), (yyvsp[-1].cval), (yyvsp[0].tval)); 
-							  }
-							  else
-								(yyval.tval) = (yyvsp[0].tval);
-							}
-#line 2149 "parser.tab.c" /* yacc.c:1646  */
+#line 1212 "parser.y" /* yacc.c:1646  */
+    { (yyval.tval) = addDecl((yyvsp[-5].sval), (yyvsp[-4].sval), (yyvsp[-3].sval), (yyvsp[-2].tval), (yyvsp[-1].cval), (yyvsp[0].tval));}
+#line 2414 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 948 "parser.y" /* yacc.c:1646  */
+#line 1213 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 2155 "parser.tab.c" /* yacc.c:1646  */
+#line 2420 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 952 "parser.y" /* yacc.c:1646  */
+#line 1217 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2161 "parser.tab.c" /* yacc.c:1646  */
+#line 2426 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 953 "parser.y" /* yacc.c:1646  */
+#line 1218 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2167 "parser.tab.c" /* yacc.c:1646  */
+#line 2432 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 957 "parser.y" /* yacc.c:1646  */
+#line 1222 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmtSeq((yyvsp[-2].tval), (yyvsp[-1].cval), (yyvsp[0].tval)); }
-#line 2173 "parser.tab.c" /* yacc.c:1646  */
+#line 2438 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 958 "parser.y" /* yacc.c:1646  */
+#line 1223 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL; }
-#line 2179 "parser.tab.c" /* yacc.c:1646  */
+#line 2444 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 962 "parser.y" /* yacc.c:1646  */
+#line 1227 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_ASSIGN);}
-#line 2185 "parser.tab.c" /* yacc.c:1646  */
+#line 2450 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 963 "parser.y" /* yacc.c:1646  */
+#line 1228 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_IF);}
-#line 2191 "parser.tab.c" /* yacc.c:1646  */
+#line 2456 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 964 "parser.y" /* yacc.c:1646  */
+#line 1229 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WHILE);}
-#line 2197 "parser.tab.c" /* yacc.c:1646  */
+#line 2462 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 965 "parser.y" /* yacc.c:1646  */
+#line 1230 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WRITE);}
-#line 2203 "parser.tab.c" /* yacc.c:1646  */
+#line 2468 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 969 "parser.y" /* yacc.c:1646  */
+#line 1234 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign1((yyvsp[-2].sval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2209 "parser.tab.c" /* yacc.c:1646  */
+#line 2474 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 970 "parser.y" /* yacc.c:1646  */
+#line 1235 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign2((yyvsp[-2].sval), (yyvsp[-1].sval), (yyvsp[0].sval));}
-#line 2215 "parser.tab.c" /* yacc.c:1646  */
+#line 2480 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 974 "parser.y" /* yacc.c:1646  */
+#line 1239 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addIf((yyvsp[-5].sval), (yyvsp[-4].tval), (yyvsp[-3].sval), (yyvsp[-2].tval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 2221 "parser.tab.c" /* yacc.c:1646  */
+#line 2486 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 978 "parser.y" /* yacc.c:1646  */
+#line 1243 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addElseCl((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2227 "parser.tab.c" /* yacc.c:1646  */
+#line 2492 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 979 "parser.y" /* yacc.c:1646  */
+#line 1244 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 2233 "parser.tab.c" /* yacc.c:1646  */
+#line 2498 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 983 "parser.y" /* yacc.c:1646  */
+#line 1248 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWhile((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 2239 "parser.tab.c" /* yacc.c:1646  */
+#line 2504 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 987 "parser.y" /* yacc.c:1646  */
+#line 1252 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWrite((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2245 "parser.tab.c" /* yacc.c:1646  */
+#line 2510 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 991 "parser.y" /* yacc.c:1646  */
+#line 1256 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr1((yyvsp[0].tval));}
-#line 2251 "parser.tab.c" /* yacc.c:1646  */
+#line 2516 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 992 "parser.y" /* yacc.c:1646  */
+#line 1257 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr2((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2257 "parser.tab.c" /* yacc.c:1646  */
+#line 2522 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 996 "parser.y" /* yacc.c:1646  */
+#line 1261 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2263 "parser.tab.c" /* yacc.c:1646  */
+#line 2528 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 997 "parser.y" /* yacc.c:1646  */
+#line 1262 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr2((yyvsp[0].tval));}
-#line 2269 "parser.tab.c" /* yacc.c:1646  */
+#line 2534 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 1001 "parser.y" /* yacc.c:1646  */
+#line 1266 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2275 "parser.tab.c" /* yacc.c:1646  */
+#line 2540 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 1002 "parser.y" /* yacc.c:1646  */
+#line 1267 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm2((yyvsp[0].tval));}
-#line 2281 "parser.tab.c" /* yacc.c:1646  */
+#line 2546 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 1006 "parser.y" /* yacc.c:1646  */
-    { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2287 "parser.tab.c" /* yacc.c:1646  */
+#line 1271 "parser.y" /* yacc.c:1646  */
+    { (yyval.tval) = addIdent((yyvsp[0].sval));}
+#line 2552 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 1007 "parser.y" /* yacc.c:1646  */
+#line 1272 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addNumber((yyvsp[0].ival));}
-#line 2293 "parser.tab.c" /* yacc.c:1646  */
+#line 2558 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 1008 "parser.y" /* yacc.c:1646  */
-    { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2299 "parser.tab.c" /* yacc.c:1646  */
+#line 1273 "parser.y" /* yacc.c:1646  */
+    { (yyval.tval) = addLiteral((yyvsp[0].sval));}
+#line 2564 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 1009 "parser.y" /* yacc.c:1646  */
+#line 1274 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addFactor((yyvsp[-2].cval), (yyvsp[-1].tval), (yyvsp[0].cval));}
-#line 2305 "parser.tab.c" /* yacc.c:1646  */
+#line 2570 "parser.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 2309 "parser.tab.c" /* yacc.c:1646  */
+#line 2574 "parser.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -2533,7 +2798,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 1012 "parser.y" /* yacc.c:1906  */
+#line 1277 "parser.y" /* yacc.c:1906  */
 
 
 int yyerror(char *s) {
