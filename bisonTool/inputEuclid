@@ -1,4 +1,4 @@
-program 
+program
    var SMALLER as int ;
    var BIGGER as int ;
    var TEMP as int ;
@@ -8,11 +8,8 @@ begin
 
    if SMALLER > BIGGER then
       TEMP := SMALLER ;
-      TEMP1 := 2147483648 ;
       SMALLER := BIGGER ;
       BIGGER := TEMP ;
-   else
-      TEMP := 143;
    end ;
 
    while SMALLER > 0 do

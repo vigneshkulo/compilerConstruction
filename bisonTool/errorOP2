@@ -1,0 +1,32 @@
+program
+	var X as int ;
+	var Y as int ;
+	var Z as int ;
+	var A as bool ;
+	var B as bool ;
+	var C as bool ;
+begin
+	% Left Operand
+	X := A * Y;	
+	X := A div Y;	
+	X := A mod Y;	
+
+	% Right Operand
+	X := Y * B;	
+	X := Y div B;	
+	X := Y mod B;	
+
+	% Both Operands
+	X := C * B;	
+	X := C div B;	
+	X := C mod B;	
+
+	% Complex Operands
+        X := Y * (X div (A mod B));
+
+	% Assigning to Bool 
+        A := Y * (X div (Y mod Z));
+
+	% Assigning to Integer 
+        X := Y * (X div (Y mod Z));
+end

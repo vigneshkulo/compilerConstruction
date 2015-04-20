@@ -1,0 +1,29 @@
+program
+	var X as int ;
+	var Y as int ;
+	var Z as int ;
+	var A as bool ;
+	var B as bool ;
+	var C as bool ;
+begin
+	% Left Operand
+	X := A < Y;	
+	X := A != Y;	
+
+	% Right Operand
+	X := Y < B;	
+	X := Y != B;	
+
+	% Both Operands
+	X := C < B;	
+	X := C != B;	
+
+	% Complex Operands
+        X := Y < (X > (A >= B));
+
+	% Assigning to Integer
+	X := Y < Z;
+
+	% Assigning to Bool
+	A := Y < Z;
+end

@@ -1,0 +1,21 @@
+program
+	var A as bool ;
+	var X as int ;
+	var Y as int ;
+	var Z as int ;
+	var A as bool ;
+	var B as bool ;
+	var X as int ;
+	var Y as int ;
+	var Z as int ;
+	var C as bool ;
+	var Z as int ;
+begin
+	% Assigning Bool to Bool 
+        A := true; 
+        B := false; 
+
+	% Assigning Int to Int 
+        X := 0; 
+        Y := 255; 
+end

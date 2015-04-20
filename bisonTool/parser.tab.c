@@ -69,13 +69,14 @@
 #include <string.h>
 #include "common.h" 
 
-
+/* Global variables */
 FILE *fp = NULL;
-char ipFile[10] = "input1";
+char ipFile[10] = "input";
+char opFile[10] = "output.c";
+
+/* Shared Global variables for Lex and Bison */
 extern int lineNum;
 extern SYMTABLE *symTable;
-
-char *tokens[] = { "INTEGER", "BOOLEAN", "UNDEFINED"};
 
 enum resultType { R_INT, R_BOOL, R_UNDEF}; 
 enum treeType { T_PROGRAM, T_DECL, T_STMTSEQ, T_TERMINAL, T_STMT, T_ASSIGN, T_IF, T_WHILE, T_WRITE, T_READ, T_EXPR, 
@@ -86,6 +87,7 @@ typedef struct ADDLINE {
 	int line;
 } ADDLINE;
 
+/* Node Structure */
 typedef struct tree {
 	enum treeType type;
 	union{
@@ -825,6 +827,7 @@ int printLine (Tree* root)
 	}
 	return ret;
 }
+
 int printSym()
 {
 	SYMTABLE *s, *tmp = NULL;
@@ -867,6 +870,7 @@ int defineVar(char* ident, Tree* type, int line)
 #define	NIL		0
 #define	CHECK_INT	1
 #define	CHECK_BOOL	2
+#define	CHECK_UNDEF	3
 
 int getFactor( Tree* mFactor)
 {
@@ -875,7 +879,8 @@ int getFactor( Tree* mFactor)
 	{
 		if( 0 > mFactor->body.factor.arg.number || 2147483647 < mFactor->body.factor.arg.number)
 		{
-			printf("error: integer constant is too large for its type: %d\n", mFactor->body.factor.arg.number);
+			printf("%s: %d:error: integer constant is invalid for its type: %d\n", ipFile, mFactor->body.factor.line, 
+				mFactor->body.factor.arg.number);
 		}
 		else
 			fprintf(fp, "%d", mFactor->body.factor.arg.number);
@@ -934,7 +939,18 @@ int getTerm( Tree* mTerm)
 		Tree* mRight = mTerm->body.term.arg.exprOP.factorr;
 
 		getFactor( mLeft);
-		fprintf(fp, " %s ", mTerm->body.term.arg.exprOP.C_OP2);
+
+		if(!strcmp("div", mTerm->body.term.arg.exprOP.C_OP2))
+		{
+			fprintf(fp, " / ");
+		}
+		else if(!strcmp("mod", mTerm->body.term.arg.exprOP.C_OP2))
+		{
+			fprintf(fp, " %% ");
+		}
+		else 
+			fprintf(fp, " %s ", mTerm->body.term.arg.exprOP.C_OP2);
+
 		getFactor( mRight);
 
 		if(R_INT != mLeft->body.factor.res)
@@ -961,7 +977,7 @@ int getTerm( Tree* mTerm)
 			return CHECK_INT;
 		}
 		else 
-			return NIL;
+			return CHECK_UNDEF;
 	}
 }
 
@@ -1008,7 +1024,7 @@ int getSim( Tree* mSim)
 			return CHECK_INT;
 		}
 		else
-			return NIL;
+			return CHECK_UNDEF;
 	}
 }
 
@@ -1033,7 +1049,14 @@ int getExpr( Tree* mExpr)
 		Tree* mRight = mExpr->body.expression.arg.exprOP.simpleExprr;
 
 		getSim( mLeft);
-		fprintf(fp, " %s ", mExpr->body.expression.arg.exprOP.C_OP4);
+
+		if(!strcmp("=", mExpr->body.expression.arg.exprOP.C_OP4))
+		{
+			fprintf(fp, " == ");
+		}
+		else
+			fprintf(fp, " %s ", mExpr->body.expression.arg.exprOP.C_OP4);
+
 		getSim( mRight);
 
 		if(R_INT != mLeft->body.simexpression.res)
@@ -1060,7 +1083,7 @@ int getExpr( Tree* mExpr)
 			return CHECK_BOOL;
 		}
 		else
-			return NIL;
+			return CHECK_UNDEF;
 	}
 }
 
@@ -1085,8 +1108,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 					{
 						if(!strcmp("int", s->type))
 						{
-							fprintf(fp, "%*c %s = %s;\n", level, 9, mAsgn->body.assign.C_IDENT, 
-									mAsgn->body.assign.arg3.C_READINT);
+							fprintf(fp, "%*cscanf(\"%%d\", &%s);\n", level, 9, mAsgn->body.assign.C_IDENT);
 						}
 						else
 						{
@@ -1109,7 +1131,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 							break;
 						}
 					}
-					fprintf(fp, "%*c %s = ", level, 9, mAsgn->body.assign.C_IDENT);
+					fprintf(fp, "%*c%s = ", level, 9, mAsgn->body.assign.C_IDENT);
 					ch = 0;
 					ch = getExpr(mAsgn->body.assign.arg3.expr);
 					if(CHECK_INT == ch)
@@ -1146,6 +1168,13 @@ int getStatSeq(Tree *mStatSeq, int level)
 								fprintf(fp, ";\n");
 						}
 					}
+					else if(CHECK_UNDEF == ch)
+					{
+						printf("%s: %d: error: assigning an 'undefined' type to a variable '%s' in '", 
+							ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
+							printTree(mAsgn);
+							printf("'\n");
+					}
 					else
 						fprintf(fp, ";\n");
 				}
@@ -1155,7 +1184,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 				fprintf(fp, "\n");
 
 				Tree *mIf = mStat->body.statement.stmt;
-				fprintf(fp, "%*c if (", level, 9); 
+				fprintf(fp, "%*cif (", level, 9); 
 				ch = getExpr(mIf->body.ifcl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
@@ -1172,13 +1201,13 @@ int getStatSeq(Tree *mStatSeq, int level)
 				Tree *mEl = mIf->body.ifcl.elseCl;
 				if(NULL != mEl)
 				{
-					fprintf(fp, "%*c }\n", level, 9);
-					fprintf(fp, "%*c else {\n", level, 9); 
+					fprintf(fp, "%*c}\n", level, 9);
+					fprintf(fp, "%*celse {\n", level, 9); 
 					getStatSeq(mEl->body.elsecl.statSeq, level + 12);	
-					fprintf(fp, "%*c }\n", level, 9);
+					fprintf(fp, "%*c}\n", level, 9);
 				}
 				else
-					fprintf(fp, "%*c }\n", level, 9);
+					fprintf(fp, "%*c}\n", level, 9);
 
 				break;
 
@@ -1186,7 +1215,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 				fprintf(fp, "\n");
 
 				Tree *mWhile = mStat->body.statement.stmt;
-				fprintf(fp, "%*c while (", level, 9); 
+				fprintf(fp, "%*cwhile (", level, 9); 
 				ch = getExpr(mWhile->body.whilecl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
@@ -1199,7 +1228,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 					fprintf(fp, ") {\n");
 
 				getStatSeq(mWhile->body.whilecl.statSeq, level + 12);	
-				fprintf(fp, "%*c }\n", level, 9);
+				fprintf(fp, "%*c}\n", level, 9);
 
 				break;
 
@@ -1207,7 +1236,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 				fprintf(fp, "\n");
 
 				Tree *mWrite = mStat->body.statement.stmt;
-				fprintf(fp, "%*c %s ", level, 9, mWrite->body.writeint.C_WRITEINT); 
+				fprintf(fp, "%*cprintf(\"%%d\\n\", ", level, 9); 
 
 				ch = getExpr(mWrite->body.writeint.expr);
 				if(CHECK_BOOL == ch)
@@ -1225,7 +1254,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 					printf("'\n");
 				}
 				else
-					fprintf(fp, ";\n");
+					fprintf(fp, ");\n");
 				break;
 
 			default:
@@ -1240,9 +1269,12 @@ int getStatSeq(Tree *mStatSeq, int level)
 
 int genCode(Tree* root)
 {
-	fp = fopen("a.out", "w+");
-//	fp = stdout; 
-	fprintf(fp, " int main(int argc, char* argv[]) {\n");
+	fp = fopen(opFile, "w+");
+
+	fprintf(fp, "#include <stdio.h>\n");
+	fprintf(fp, "#include <stdlib.h>\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "int main(int argc, char* argv[]) {\n");
 	
 	/* Declarations Part */
 	Tree *mDecl = root->body.program.decl;
@@ -1252,23 +1284,26 @@ int genCode(Tree* root)
 		if(-1 != defineVar(mDecl->body.declare.C_IDENT, mType, mDecl->body.declare.line))
 		{
 			if(!strcmp(mType->body.terminal, "int"))
-				fprintf(fp, "\t %s %s = 0;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+				fprintf(fp, "\t%s %s = 0;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
 			else if(!strcmp(mType->body.terminal, "bool"))
-				fprintf(fp, "\t %s %s = false;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+				fprintf(fp, "\t%s %s = false;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
 		}
 
 		mDecl = mDecl->body.declare.decl;
 	}
 	fprintf(fp, "\n");
 
+	/* Statement Sequence Part */
 	getStatSeq(root->body.program.statSeq, 0);	
-	fprintf(fp, "\n");
+
+	fprintf(fp, "\nreturn 0;\n");
+	fprintf(fp, "}");
 
 	return 0;
 }
 
 
-#line 1272 "parser.tab.c" /* yacc.c:339  */
+#line 1307 "parser.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -1335,7 +1370,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 1209 "parser.y" /* yacc.c:355  */
+#line 1244 "parser.y" /* yacc.c:355  */
 
 int	ival;
 char	cval;
@@ -1343,7 +1378,7 @@ char	*sval;
 struct tree	*tval;
 struct ADDLINE	*sline;
 
-#line 1347 "parser.tab.c" /* yacc.c:355  */
+#line 1382 "parser.tab.c" /* yacc.c:355  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
@@ -1358,7 +1393,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 1362 "parser.tab.c" /* yacc.c:358  */
+#line 1397 "parser.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -1658,10 +1693,10 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,  1270,  1270,  1278,  1279,  1283,  1287,  1293,  1294,  1298,
-    1299,  1303,  1304,  1305,  1306,  1310,  1311,  1315,  1319,  1320,
-    1324,  1328,  1332,  1333,  1337,  1338,  1342,  1343,  1347,  1348,
-    1349,  1350
+       0,  1305,  1305,  1312,  1313,  1317,  1321,  1327,  1328,  1332,
+    1333,  1337,  1338,  1339,  1340,  1344,  1345,  1349,  1353,  1354,
+    1358,  1362,  1366,  1367,  1371,  1372,  1376,  1377,  1381,  1382,
+    1383,  1384
 };
 #endif
 
@@ -2464,193 +2499,192 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 1270 "parser.y" /* yacc.c:1646  */
+#line 1305 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addProg((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));
-							//  printTree($$);
 							  genCode((yyval.tval));
 							  printSym();
 							}
-#line 2474 "parser.tab.c" /* yacc.c:1646  */
+#line 2508 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 1278 "parser.y" /* yacc.c:1646  */
+#line 1312 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = modDecl((yyvsp[-1].tval), (yyvsp[0].tval));}
-#line 2480 "parser.tab.c" /* yacc.c:1646  */
+#line 2514 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 1279 "parser.y" /* yacc.c:1646  */
+#line 1313 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 2486 "parser.tab.c" /* yacc.c:1646  */
+#line 2520 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 1283 "parser.y" /* yacc.c:1646  */
+#line 1317 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addDecl((yyvsp[-4].sval), (yyvsp[-3].sline)->ident, (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].cval), NULL, (yyvsp[-3].sline)->line); free((yyvsp[-3].sline));}
-#line 2492 "parser.tab.c" /* yacc.c:1646  */
+#line 2526 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 1287 "parser.y" /* yacc.c:1646  */
+#line 1321 "parser.y" /* yacc.c:1646  */
     { (yyval.sline) = (ADDLINE*) malloc(sizeof(ADDLINE));
 							  (yyval.sline)->ident = (yyvsp[0].sval);
 							  (yyval.sline)->line = lineNum; }
-#line 2500 "parser.tab.c" /* yacc.c:1646  */
+#line 2534 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 1293 "parser.y" /* yacc.c:1646  */
+#line 1327 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2506 "parser.tab.c" /* yacc.c:1646  */
+#line 2540 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 1294 "parser.y" /* yacc.c:1646  */
+#line 1328 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2512 "parser.tab.c" /* yacc.c:1646  */
+#line 2546 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 1298 "parser.y" /* yacc.c:1646  */
+#line 1332 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmtSeq((yyvsp[-2].tval), (yyvsp[-1].cval), (yyvsp[0].tval)); }
-#line 2518 "parser.tab.c" /* yacc.c:1646  */
+#line 2552 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 1299 "parser.y" /* yacc.c:1646  */
+#line 1333 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL; }
-#line 2524 "parser.tab.c" /* yacc.c:1646  */
+#line 2558 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 1303 "parser.y" /* yacc.c:1646  */
+#line 1337 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_ASSIGN);}
-#line 2530 "parser.tab.c" /* yacc.c:1646  */
+#line 2564 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 1304 "parser.y" /* yacc.c:1646  */
+#line 1338 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_IF);}
-#line 2536 "parser.tab.c" /* yacc.c:1646  */
+#line 2570 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 1305 "parser.y" /* yacc.c:1646  */
+#line 1339 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WHILE);}
-#line 2542 "parser.tab.c" /* yacc.c:1646  */
+#line 2576 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 1306 "parser.y" /* yacc.c:1646  */
+#line 1340 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WRITE);}
-#line 2548 "parser.tab.c" /* yacc.c:1646  */
+#line 2582 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 1310 "parser.y" /* yacc.c:1646  */
+#line 1344 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign1((yyvsp[-2].sline)->ident, (yyvsp[-1].sval), (yyvsp[0].tval), (yyvsp[-2].sline)->line); free((yyvsp[-2].sline));}
-#line 2554 "parser.tab.c" /* yacc.c:1646  */
+#line 2588 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 1311 "parser.y" /* yacc.c:1646  */
+#line 1345 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign2((yyvsp[-2].sline)->ident, (yyvsp[-1].sval), (yyvsp[0].sval), (yyvsp[-2].sline)->line); free((yyvsp[-2].sline));}
-#line 2560 "parser.tab.c" /* yacc.c:1646  */
+#line 2594 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 1315 "parser.y" /* yacc.c:1646  */
+#line 1349 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addIf((yyvsp[-5].sval), (yyvsp[-4].tval), (yyvsp[-3].sval), (yyvsp[-2].tval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 2566 "parser.tab.c" /* yacc.c:1646  */
+#line 2600 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 1319 "parser.y" /* yacc.c:1646  */
+#line 1353 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addElseCl((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2572 "parser.tab.c" /* yacc.c:1646  */
+#line 2606 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 1320 "parser.y" /* yacc.c:1646  */
+#line 1354 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 2578 "parser.tab.c" /* yacc.c:1646  */
+#line 2612 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 1324 "parser.y" /* yacc.c:1646  */
+#line 1358 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWhile((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 2584 "parser.tab.c" /* yacc.c:1646  */
+#line 2618 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 1328 "parser.y" /* yacc.c:1646  */
+#line 1362 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWrite((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2590 "parser.tab.c" /* yacc.c:1646  */
+#line 2624 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 1332 "parser.y" /* yacc.c:1646  */
+#line 1366 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr1((yyvsp[0].tval));}
-#line 2596 "parser.tab.c" /* yacc.c:1646  */
+#line 2630 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 1333 "parser.y" /* yacc.c:1646  */
+#line 1367 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr2((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2602 "parser.tab.c" /* yacc.c:1646  */
+#line 2636 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 1337 "parser.y" /* yacc.c:1646  */
+#line 1371 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2608 "parser.tab.c" /* yacc.c:1646  */
+#line 2642 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 1338 "parser.y" /* yacc.c:1646  */
+#line 1372 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr2((yyvsp[0].tval));}
-#line 2614 "parser.tab.c" /* yacc.c:1646  */
+#line 2648 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 1342 "parser.y" /* yacc.c:1646  */
+#line 1376 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2620 "parser.tab.c" /* yacc.c:1646  */
+#line 2654 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 1343 "parser.y" /* yacc.c:1646  */
+#line 1377 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm2((yyvsp[0].tval));}
-#line 2626 "parser.tab.c" /* yacc.c:1646  */
+#line 2660 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 1347 "parser.y" /* yacc.c:1646  */
+#line 1381 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addIdent((yyvsp[0].sval), lineNum);}
-#line 2632 "parser.tab.c" /* yacc.c:1646  */
+#line 2666 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 1348 "parser.y" /* yacc.c:1646  */
+#line 1382 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addNumber((yyvsp[0].ival), lineNum);}
-#line 2638 "parser.tab.c" /* yacc.c:1646  */
+#line 2672 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 1349 "parser.y" /* yacc.c:1646  */
+#line 1383 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addLiteral((yyvsp[0].sval), lineNum);}
-#line 2644 "parser.tab.c" /* yacc.c:1646  */
+#line 2678 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 1350 "parser.y" /* yacc.c:1646  */
+#line 1384 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addFactor((yyvsp[-2].cval), (yyvsp[-1].tval), (yyvsp[0].cval));}
-#line 2650 "parser.tab.c" /* yacc.c:1646  */
+#line 2684 "parser.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 2654 "parser.tab.c" /* yacc.c:1646  */
+#line 2688 "parser.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -2878,7 +2912,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 1353 "parser.y" /* yacc.c:1906  */
+#line 1387 "parser.y" /* yacc.c:1906  */
 
 
 int yyerror(char *s) {

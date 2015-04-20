@@ -1,0 +1,25 @@
+program
+   var SMALLER as int ;
+   var BIGGER as int ;
+   var TEMP as int ;
+begin
+   BIGGER := readInt ;
+   SMALLER := readInt ;
+
+   while true do
+      BIGGER := BIGGER - SMALLER ;
+
+      if (SMALLER > (BIGGER + SMALLER)) then
+         TEMP := SMALLER ;
+         SMALLER := BIGGER ;
+         BIGGER := TEMP ;
+      end ;
+
+      while (( TEMP - SMALLER) > (BIGGER - SMALLER)) do
+         while (( TEMP - SMALLER) + (BIGGER - SMALLER)) do
+         end ;
+      end ;
+
+   end ;
+   writeInt BIGGER ;
+end

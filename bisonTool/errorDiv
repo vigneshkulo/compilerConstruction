@@ -1,0 +1,11 @@
+program
+	var X as int ;
+	var Y as int ;
+	var Z as int ;
+begin
+	Z := 55;
+	Y := 0; 
+	X := Z div 0;
+	X := Z div Y;
+	writeInt X ;
+end

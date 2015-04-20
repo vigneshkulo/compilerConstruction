@@ -16,8 +16,9 @@
 
 blanks          [ \t]+
 newline		[\n]
+comment		%[^\n]*\n
 identifier	[A-Z][A-Z0-9]*
-number		[1-9][0-9]*|0
+number		-?[1-9][0-9]*|0
 
 %%
 
@@ -143,10 +144,20 @@ number		[1-9][0-9]*|0
 		}
 
 {blanks}        { /* ignore */ }
+
 {newline}	{ lineNum++;}
+
+{comment}	{ // printf("* Line %d is commented\n", lineNum);
+		  lineNum++;
+		}
 
 {number}	{
 			yylval.ival = atoi(yytext);
+			if(0 > yylval.ival || 2147483647 < yylval.ival)
+			{
+				printf("%s: %d:error: integer constant is invalid for its type: %s\n", ipFile, lineNum, yytext);
+				yylval.ival = 0;
+			}
 			return NUMBER;
 		}
 

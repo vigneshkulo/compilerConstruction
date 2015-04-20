@@ -1,0 +1,20 @@
+program
+	var X as int ;
+	var Y as int ;
+	var Z as int ;
+	var A as bool ;
+	var B as bool ;
+	var C as bool ;
+begin
+	% ReadInt 
+	X := readInt;
+	Y := readInt;
+
+	A := readInt;
+
+	% WriteInt 
+	writeInt X;
+	writeInt X + (Y + (X mod (X div Z)));
+
+	writeInt (Y > (X + (X mod Z)));
+end

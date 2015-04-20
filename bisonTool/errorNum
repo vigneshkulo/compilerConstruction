@@ -2,7 +2,7 @@ program
 	var X as int ;
 	var Y as int ;
 begin
-        X := readInt ;
-	Y := 5 - X ;
+	Y := 2147483648 - X ;
+	Y := -5 ;
 	writeInt X - Y ;
 end

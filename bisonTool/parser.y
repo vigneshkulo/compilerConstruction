@@ -4,13 +4,14 @@
 #include <string.h>
 #include "common.h" 
 
-
+/* Global variables */
 FILE *fp = NULL;
-char ipFile[10] = "input1";
+char ipFile[10] = "input";
+char opFile[10] = "output.c";
+
+/* Shared Global variables for Lex and Bison */
 extern int lineNum;
 extern SYMTABLE *symTable;
-
-char *tokens[] = { "INTEGER", "BOOLEAN", "UNDEFINED"};
 
 enum resultType { R_INT, R_BOOL, R_UNDEF}; 
 enum treeType { T_PROGRAM, T_DECL, T_STMTSEQ, T_TERMINAL, T_STMT, T_ASSIGN, T_IF, T_WHILE, T_WRITE, T_READ, T_EXPR, 
@@ -21,6 +22,7 @@ typedef struct ADDLINE {
 	int line;
 } ADDLINE;
 
+/* Node Structure */
 typedef struct tree {
 	enum treeType type;
 	union{
@@ -760,6 +762,7 @@ int printLine (Tree* root)
 	}
 	return ret;
 }
+
 int printSym()
 {
 	SYMTABLE *s, *tmp = NULL;
@@ -802,6 +805,7 @@ int defineVar(char* ident, Tree* type, int line)
 #define	NIL		0
 #define	CHECK_INT	1
 #define	CHECK_BOOL	2
+#define	CHECK_UNDEF	3
 
 int getFactor( Tree* mFactor)
 {
@@ -810,7 +814,8 @@ int getFactor( Tree* mFactor)
 	{
 		if( 0 > mFactor->body.factor.arg.number || 2147483647 < mFactor->body.factor.arg.number)
 		{
-			printf("error: integer constant is too large for its type: %d\n", mFactor->body.factor.arg.number);
+			printf("%s: %d:error: integer constant is invalid for its type: %d\n", ipFile, mFactor->body.factor.line, 
+				mFactor->body.factor.arg.number);
 		}
 		else
 			fprintf(fp, "%d", mFactor->body.factor.arg.number);
@@ -869,7 +874,18 @@ int getTerm( Tree* mTerm)
 		Tree* mRight = mTerm->body.term.arg.exprOP.factorr;
 
 		getFactor( mLeft);
-		fprintf(fp, " %s ", mTerm->body.term.arg.exprOP.C_OP2);
+
+		if(!strcmp("div", mTerm->body.term.arg.exprOP.C_OP2))
+		{
+			fprintf(fp, " / ");
+		}
+		else if(!strcmp("mod", mTerm->body.term.arg.exprOP.C_OP2))
+		{
+			fprintf(fp, " %% ");
+		}
+		else 
+			fprintf(fp, " %s ", mTerm->body.term.arg.exprOP.C_OP2);
+
 		getFactor( mRight);
 
 		if(R_INT != mLeft->body.factor.res)
@@ -896,7 +912,7 @@ int getTerm( Tree* mTerm)
 			return CHECK_INT;
 		}
 		else 
-			return NIL;
+			return CHECK_UNDEF;
 	}
 }
 
@@ -943,7 +959,7 @@ int getSim( Tree* mSim)
 			return CHECK_INT;
 		}
 		else
-			return NIL;
+			return CHECK_UNDEF;
 	}
 }
 
@@ -968,7 +984,14 @@ int getExpr( Tree* mExpr)
 		Tree* mRight = mExpr->body.expression.arg.exprOP.simpleExprr;
 
 		getSim( mLeft);
-		fprintf(fp, " %s ", mExpr->body.expression.arg.exprOP.C_OP4);
+
+		if(!strcmp("=", mExpr->body.expression.arg.exprOP.C_OP4))
+		{
+			fprintf(fp, " == ");
+		}
+		else
+			fprintf(fp, " %s ", mExpr->body.expression.arg.exprOP.C_OP4);
+
 		getSim( mRight);
 
 		if(R_INT != mLeft->body.simexpression.res)
@@ -995,7 +1018,7 @@ int getExpr( Tree* mExpr)
 			return CHECK_BOOL;
 		}
 		else
-			return NIL;
+			return CHECK_UNDEF;
 	}
 }
 
@@ -1020,8 +1043,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 					{
 						if(!strcmp("int", s->type))
 						{
-							fprintf(fp, "%*c %s = %s;\n", level, 9, mAsgn->body.assign.C_IDENT, 
-									mAsgn->body.assign.arg3.C_READINT);
+							fprintf(fp, "%*cscanf(\"%%d\", &%s);\n", level, 9, mAsgn->body.assign.C_IDENT);
 						}
 						else
 						{
@@ -1044,7 +1066,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 							break;
 						}
 					}
-					fprintf(fp, "%*c %s = ", level, 9, mAsgn->body.assign.C_IDENT);
+					fprintf(fp, "%*c%s = ", level, 9, mAsgn->body.assign.C_IDENT);
 					ch = 0;
 					ch = getExpr(mAsgn->body.assign.arg3.expr);
 					if(CHECK_INT == ch)
@@ -1081,6 +1103,13 @@ int getStatSeq(Tree *mStatSeq, int level)
 								fprintf(fp, ";\n");
 						}
 					}
+					else if(CHECK_UNDEF == ch)
+					{
+						printf("%s: %d: error: assigning an 'undefined' type to a variable '%s' in '", 
+							ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
+							printTree(mAsgn);
+							printf("'\n");
+					}
 					else
 						fprintf(fp, ";\n");
 				}
@@ -1090,7 +1119,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 				fprintf(fp, "\n");
 
 				Tree *mIf = mStat->body.statement.stmt;
-				fprintf(fp, "%*c if (", level, 9); 
+				fprintf(fp, "%*cif (", level, 9); 
 				ch = getExpr(mIf->body.ifcl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
@@ -1107,13 +1136,13 @@ int getStatSeq(Tree *mStatSeq, int level)
 				Tree *mEl = mIf->body.ifcl.elseCl;
 				if(NULL != mEl)
 				{
-					fprintf(fp, "%*c }\n", level, 9);
-					fprintf(fp, "%*c else {\n", level, 9); 
+					fprintf(fp, "%*c}\n", level, 9);
+					fprintf(fp, "%*celse {\n", level, 9); 
 					getStatSeq(mEl->body.elsecl.statSeq, level + 12);	
-					fprintf(fp, "%*c }\n", level, 9);
+					fprintf(fp, "%*c}\n", level, 9);
 				}
 				else
-					fprintf(fp, "%*c }\n", level, 9);
+					fprintf(fp, "%*c}\n", level, 9);
 
 				break;
 
@@ -1121,7 +1150,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 				fprintf(fp, "\n");
 
 				Tree *mWhile = mStat->body.statement.stmt;
-				fprintf(fp, "%*c while (", level, 9); 
+				fprintf(fp, "%*cwhile (", level, 9); 
 				ch = getExpr(mWhile->body.whilecl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
@@ -1134,7 +1163,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 					fprintf(fp, ") {\n");
 
 				getStatSeq(mWhile->body.whilecl.statSeq, level + 12);	
-				fprintf(fp, "%*c }\n", level, 9);
+				fprintf(fp, "%*c}\n", level, 9);
 
 				break;
 
@@ -1142,7 +1171,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 				fprintf(fp, "\n");
 
 				Tree *mWrite = mStat->body.statement.stmt;
-				fprintf(fp, "%*c %s ", level, 9, mWrite->body.writeint.C_WRITEINT); 
+				fprintf(fp, "%*cprintf(\"%%d\\n\", ", level, 9); 
 
 				ch = getExpr(mWrite->body.writeint.expr);
 				if(CHECK_BOOL == ch)
@@ -1160,7 +1189,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 					printf("'\n");
 				}
 				else
-					fprintf(fp, ";\n");
+					fprintf(fp, ");\n");
 				break;
 
 			default:
@@ -1175,9 +1204,12 @@ int getStatSeq(Tree *mStatSeq, int level)
 
 int genCode(Tree* root)
 {
-	fp = fopen("a.out", "w+");
-//	fp = stdout; 
-	fprintf(fp, " int main(int argc, char* argv[]) {\n");
+	fp = fopen(opFile, "w+");
+
+	fprintf(fp, "#include <stdio.h>\n");
+	fprintf(fp, "#include <stdlib.h>\n");
+	fprintf(fp, "\n");
+	fprintf(fp, "int main(int argc, char* argv[]) {\n");
 	
 	/* Declarations Part */
 	Tree *mDecl = root->body.program.decl;
@@ -1187,17 +1219,20 @@ int genCode(Tree* root)
 		if(-1 != defineVar(mDecl->body.declare.C_IDENT, mType, mDecl->body.declare.line))
 		{
 			if(!strcmp(mType->body.terminal, "int"))
-				fprintf(fp, "\t %s %s = 0;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+				fprintf(fp, "\t%s %s = 0;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
 			else if(!strcmp(mType->body.terminal, "bool"))
-				fprintf(fp, "\t %s %s = false;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+				fprintf(fp, "\t%s %s = false;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
 		}
 
 		mDecl = mDecl->body.declare.decl;
 	}
 	fprintf(fp, "\n");
 
+	/* Statement Sequence Part */
 	getStatSeq(root->body.program.statSeq, 0);	
-	fprintf(fp, "\n");
+
+	fprintf(fp, "\nreturn 0;\n");
+	fprintf(fp, "}");
 
 	return 0;
 }
@@ -1268,7 +1303,6 @@ struct ADDLINE	*sline;
 
 Program:
 	PROGRAM	Declarations BEGIN_K Stmtseq END_K	{ $$ = addProg($1, $2, $3, $4, $5);
-							//  printTree($$);
 							  genCode($$);
 							  printSym();
 							}
@@ -1307,8 +1341,8 @@ Stmt:
 	;
 
 Assignment:
-	Ident ASGN Expr				{ $$ = addAssign1($1->ident, $2, $3, $1->line); free($1);}
-	| Ident ASGN READINT 			{ $$ = addAssign2($1->ident, $2, $3, $1->line); free($1);}
+	Ident ASGN Expr					{ $$ = addAssign1($1->ident, $2, $3, $1->line); free($1);}
+	| Ident ASGN READINT 				{ $$ = addAssign2($1->ident, $2, $3, $1->line); free($1);}
 	;
 
 IfStmt:
