@@ -6,6 +6,8 @@
 
 
 FILE *fp = NULL;
+char ipFile[10] = "input1";
+extern int lineNum;
 extern SYMTABLE *symTable;
 
 char *tokens[] = { "INTEGER", "BOOLEAN", "UNDEFINED"};
@@ -13,6 +15,11 @@ char *tokens[] = { "INTEGER", "BOOLEAN", "UNDEFINED"};
 enum resultType { R_INT, R_BOOL, R_UNDEF}; 
 enum treeType { T_PROGRAM, T_DECL, T_STMTSEQ, T_TERMINAL, T_STMT, T_ASSIGN, T_IF, T_WHILE, T_WRITE, T_READ, T_EXPR, 
 		T_OP, T_NO_OP, T_SIMPLE_EXPR, T_TERM, T_FACTOR, T_NUMBER, T_ELSE, T_IDENT, T_LIT, T_PAR_EXPR};
+
+typedef struct ADDLINE {
+	char* ident;
+	int line;
+} ADDLINE;
 
 typedef struct tree {
 	enum treeType type;
@@ -32,6 +39,7 @@ typedef struct tree {
 			struct tree* type;
 			char C_SC;
 			struct tree* decl;
+			int line;
 		}declare;
 
 		struct{
@@ -58,6 +66,7 @@ typedef struct tree {
 				char* C_READINT;
 				struct tree* expr;
 			}arg3;
+			int line;
 		}assign;
 
 		struct{
@@ -104,6 +113,7 @@ typedef struct tree {
 			union{
 				char* ident;
 				char* literal;
+				int number;
 				struct {
 					char C_LP;
 					struct tree* expr;
@@ -111,6 +121,7 @@ typedef struct tree {
 				}parenExpr;
 			}arg;
 			enum resultType res;
+			int line;
 		}factor;
 
 		struct{
@@ -136,7 +147,6 @@ typedef struct tree {
 		}elsecl;
 
 		char* terminal;
-		int number;
 	}body;
 } Tree;
 
@@ -154,7 +164,7 @@ Tree* addProg(char* Prog, Tree* decl, char* beg, Tree* stSeq, char* end)
 	return cur;
 }
 
-Tree* addDecl(char* Var, char* Ident, char* As, Tree* type, char SemiC, Tree* decl)
+Tree* addDecl(char* Var, char* Ident, char* As, Tree* type, char SemiC, Tree* decl, int line)
 {
 	Tree *cur = (Tree*) malloc (sizeof(Tree));
 
@@ -164,6 +174,14 @@ Tree* addDecl(char* Var, char* Ident, char* As, Tree* type, char SemiC, Tree* de
 	cur->body.declare.C_AS = As;
 	cur->body.declare.type = type;
 	cur->body.declare.C_SC = SemiC;
+	cur->body.declare.decl = decl;
+	cur->body.declare.line = line;
+
+	return cur;
+}
+
+Tree* modDecl(Tree* cur, Tree* decl)
+{
 	cur->body.declare.decl = decl;
 
 	return cur;
@@ -203,7 +221,7 @@ Tree* addWrite(char* Write, Tree* expr)
 	return cur;
 }
 
-Tree* addAssign2(char* Ident, char* Asgn, char* Read)
+Tree* addAssign2(char* Ident, char* Asgn, char* Read, int line)
 {
 	Tree *cur = (Tree*) malloc (sizeof(Tree));
 
@@ -212,11 +230,12 @@ Tree* addAssign2(char* Ident, char* Asgn, char* Read)
 	cur->body.assign.C_ASGN = Asgn;
 	cur->body.assign.arg3.C_READINT = Read;
 	cur->body.assign.type = T_READ;
+	cur->body.assign.line = line;
 
 	return cur;
 }
 
-Tree* addAssign1(char* Ident, char* Asgn, Tree* expr)
+Tree* addAssign1(char* Ident, char* Asgn, Tree* expr, int line)
 {
 	Tree *cur = (Tree*) malloc (sizeof(Tree));
 
@@ -225,6 +244,7 @@ Tree* addAssign1(char* Ident, char* Asgn, Tree* expr)
 	cur->body.assign.C_ASGN = Asgn;
 	cur->body.assign.arg3.expr = expr;
 	cur->body.assign.type = T_EXPR;
+	cur->body.assign.line = line;
 
 	return cur;
 }
@@ -307,7 +327,7 @@ Tree* addTerm2(Tree* factor)
 	return cur;
 }
 
-Tree* addIdent(char* ident)
+Tree* addIdent(char* ident, int line)
 {
 	Tree *cur = (Tree*) malloc (sizeof(Tree));
 
@@ -315,11 +335,12 @@ Tree* addIdent(char* ident)
 	cur->body.factor.type = T_IDENT;
 	cur->body.factor.arg.ident = ident;
 	cur->body.factor.res = R_UNDEF;
+	cur->body.factor.line = line;
 
 	return cur;
 }
 
-Tree* addLiteral(char* literal)
+Tree* addLiteral(char* literal, int line)
 {
 	Tree *cur = (Tree*) malloc (sizeof(Tree));
 
@@ -327,6 +348,20 @@ Tree* addLiteral(char* literal)
 	cur->body.factor.type = T_LIT;
 	cur->body.factor.arg.literal = literal;
 	cur->body.factor.res = R_UNDEF;
+	cur->body.factor.line = line;
+
+	return cur;
+}
+
+Tree* addNumber(int num, int line)
+{
+	Tree *cur = (Tree*) malloc (sizeof(Tree));
+
+	cur->type = T_FACTOR;
+	cur->body.factor.type = T_NUMBER;
+	cur->body.factor.arg.number = num;
+	cur->body.factor.res = R_UNDEF;
+	cur->body.factor.line = line;
 
 	return cur;
 }
@@ -381,16 +416,6 @@ Tree* addElseCl( char* Else, Tree* stSeq)
 	cur->type = T_ELSE;
 	cur->body.elsecl.C_ELSE = Else;
 	cur->body.elsecl.statSeq = stSeq;
-
-	return cur;
-}
-
-Tree* addNumber(int num)
-{
-	Tree *cur = (Tree*) malloc (sizeof(Tree));
-
-	cur->type = T_NUMBER;
-	cur->body.number = num;
 
 	return cur;
 }
@@ -600,6 +625,10 @@ int printTree (Tree* root)
 				{
 					printf("%s ", root->body.factor.arg.literal);
 				}
+				else if(T_NUMBER == root->body.factor.type)
+				{
+					printf("%d ", root->body.factor.arg.number);
+				}
 				else if(T_PAR_EXPR == root->body.factor.type)
 				{
 					printf("%c ", root->body.factor.arg.parenExpr.C_LP);
@@ -656,10 +685,6 @@ int printTree (Tree* root)
 				}
 				break;
 	
-		case T_NUMBER:	
-				printf("%d ", root->body.number);
-				break;
-	
 		case T_TERMINAL:	
 				printf("%s ", root->body.terminal);
 				break;
@@ -671,6 +696,70 @@ int printTree (Tree* root)
 	return 1;
 }
 
+int printLine (Tree* root)
+{
+	int ret = 0;
+	if(NULL == root)
+	{
+		return -1;
+	}
+
+	switch(root->type)
+	{
+		case T_EXPR:	
+				if(T_NO_OP == root->body.expression.type)
+				{
+					ret = printLine(root->body.expression.arg.simpleExpr);	
+				}
+				else if(T_OP == root->body.expression.type)
+				{
+					ret = printLine(root->body.expression.arg.exprOP.simpleExprl);	
+					printLine(root->body.expression.arg.exprOP.simpleExprr);	
+				}
+				break;
+
+		case T_SIMPLE_EXPR:	
+				if(T_NO_OP == root->body.simexpression.type)
+				{
+					ret = printLine(root->body.simexpression.arg.term);	
+				}
+				else if(T_OP == root->body.simexpression.type)
+				{
+					ret = printLine(root->body.simexpression.arg.exprOP.terml);	
+					printLine(root->body.simexpression.arg.exprOP.termr);	
+				}
+				break;
+	
+		case T_TERM:	
+				if(T_NO_OP == root->body.term.type)
+				{
+					ret = printLine(root->body.term.arg.factor);	
+				}
+				else if(T_OP == root->body.term.type)
+				{
+					ret = printLine(root->body.term.arg.exprOP.factorl);	
+					printLine(root->body.term.arg.exprOP.factorr);	
+				}
+				break;
+	
+		case T_FACTOR:	
+				if(T_IDENT == root->body.factor.type || T_LIT == root->body.factor.type || T_NUMBER == root->body.factor.type)
+				{
+					ret = root->body.factor.line;
+				}
+				else if(T_PAR_EXPR == root->body.factor.type)
+				{
+					ret = printLine(root->body.factor.arg.parenExpr.expr);	
+				}
+				break;
+
+		default:
+				printf("* Undefined TYPE: %d\n", root->type);
+				ret = 0;
+				break;
+	}
+	return ret;
+}
 int printSym()
 {
 	SYMTABLE *s, *tmp = NULL;
@@ -689,7 +778,7 @@ int printSym()
 	return 0;
 }
 
-int defineVar(char* ident, Tree* type)
+int defineVar(char* ident, Tree* type, int line)
 {
 	SYMTABLE *s = NULL;
 
@@ -703,7 +792,7 @@ int defineVar(char* ident, Tree* type)
 		}
 		else
 		{
-			printf("error: redefinition of ‘%s’\n", ident);
+			printf("%s: %d: error: redefinition of ‘%s’\n", ipFile, line, ident);
 			return -1;
 		}
 	}
@@ -714,22 +803,20 @@ int defineVar(char* ident, Tree* type)
 #define	CHECK_INT	1
 #define	CHECK_BOOL	2
 
-int getFactor( Tree* mFactor, int check)
+int getFactor( Tree* mFactor)
 {
-	if(T_NUMBER == mFactor->type)
+	int ret = 0;
+	if(T_NUMBER == mFactor->body.factor.type)
 	{
-		#ifdef DE
-		printf("-> Number ");
-		#endif
-
-		if( 0 > mFactor->body.number || 2147483647 < mFactor->body.number)
+		if( 0 > mFactor->body.factor.arg.number || 2147483647 < mFactor->body.factor.arg.number)
 		{
-			printf("error: integer constant is too large for its type: %d\n", mFactor->body.number);
+			printf("error: integer constant is too large for its type: %d\n", mFactor->body.factor.arg.number);
 		}
 		else
-			fprintf(fp, "%d", mFactor->body.number);
+			fprintf(fp, "%d", mFactor->body.factor.arg.number);
 
 		mFactor->body.factor.res = R_INT;
+		return CHECK_INT;
 	}
 	else if(T_IDENT == mFactor->body.factor.type)
 	{
@@ -741,214 +828,174 @@ int getFactor( Tree* mFactor, int check)
 			if(!strcmp("int", s->type))
 			{
 				mFactor->body.factor.res = R_INT;
-				#ifdef DE
-				printf("-> INT ");
-				#endif
-				return 1;
+				return CHECK_INT;
 			}
 			else if(!strcmp("bool", s->type))
 			{
 				mFactor->body.factor.res = R_BOOL;
-				#ifdef DE
-				printf("-> BOOL ");
-				#endif
-				return 2;
+				return CHECK_BOOL;
 			}
 		}
 	}
+	else if(T_LIT == mFactor->body.factor.type)
+	{
+		fprintf(fp, "%s", mFactor->body.factor.arg.literal);
+		mFactor->body.factor.res = R_BOOL;
+		return CHECK_BOOL;
+	}
 	else if(T_PAR_EXPR == mFactor->body.factor.type)
 	{
-		#ifdef DE
-		printf("-> ( ");
-		#endif
 		fprintf(fp, "(");
-		getExpr(mFactor->body.factor.arg.parenExpr.expr);
-		#ifdef DE
-		printf(")");
-		#endif
+		ret = getExpr(mFactor->body.factor.arg.parenExpr.expr);
 		fprintf(fp, ")");
 		mFactor->body.factor.res = mFactor->body.factor.arg.parenExpr.expr->body.expression.res;
+		return ret;
 	}
 }
 
-int getTerm( Tree* mTerm, int check)
+int getTerm( Tree* mTerm)
 {
+	int err = 0;
+	int ret = 0;
 	if(T_NO_OP == mTerm->body.term.type)
 	{
-		#ifdef DE
-		printf("-> Factor ");
-		#endif
-		getFactor(mTerm->body.term.arg.factor, check);
-		#ifdef DE
-		printf("{%d}", mTerm->body.term.arg.factor->body.factor.res);
-		#endif
+		ret = getFactor(mTerm->body.term.arg.factor);
 		mTerm->body.term.res = mTerm->body.term.arg.factor->body.factor.res;
+		return ret;
 	}
 	else if(T_OP == mTerm->body.term.type)
 	{
 		Tree* mLeft  = mTerm->body.term.arg.exprOP.factorl;
 		Tree* mRight = mTerm->body.term.arg.exprOP.factorr;
 
-		getFactor( mLeft, CHECK_INT);
+		getFactor( mLeft);
 		fprintf(fp, " %s ", mTerm->body.term.arg.exprOP.C_OP2);
-		getFactor( mRight, CHECK_INT);
+		getFactor( mRight);
 
-		if(R_INT != mLeft->body.factor.res && R_INT != mRight->body.factor.res)
+		if(R_INT != mLeft->body.factor.res)
 		{
-			printf("error: Both operands of '"); 
-			printTree(mTerm);
-			printf("' are not Integers\n");
-		}
-		else if(R_INT != mLeft->body.factor.res)
-		{
-			printf("error: Left operand of '"); 
+			printf("%s: %d: error: Left operand of '", ipFile, printLine(mLeft)); 
 			printTree(mTerm);
 			printf("' : '");
 			printTree(mLeft);
 			printf("' is not an Integer\n");
+			err = 1;
 		}
-		else if(R_INT != mRight->body.factor.res)
+		if(R_INT != mRight->body.factor.res)
 		{
-			printf("error: Right operand of '"); 
+			printf("%s: %d: error: Right operand of '", ipFile, printLine(mRight)); 
 			printTree(mTerm);
 			printf("' : '");
 			printTree(mRight);
 			printf("' is not an Integer\n");
+			err = 1;
 		}
-		else if(R_UNDEF == mTerm->body.term.res)
+		if(R_UNDEF == mTerm->body.term.res && 1 != err)
 		{
 			mTerm->body.term.res = R_INT;
+			return CHECK_INT;
 		}
-		return CHECK_INT;
+		else 
+			return NIL;
 	}
 }
 
-int getSim( Tree* mSim, int check)
+int getSim( Tree* mSim)
 {
+	int err = 0;
+	int ret = 0;
 	if(T_NO_OP == mSim->body.simexpression.type)
 	{
-		#ifdef DE
-		printf("-> Term ");
-		#endif
-		getTerm(mSim->body.simexpression.arg.term, check);
+		ret = getTerm(mSim->body.simexpression.arg.term);
 		mSim->body.simexpression.res = mSim->body.simexpression.arg.term->body.term.res;
+		return ret;
 	}
 	else if(T_OP == mSim->body.simexpression.type)
 	{
 		Tree* mLeft  = mSim->body.simexpression.arg.exprOP.terml;
 		Tree* mRight = mSim->body.simexpression.arg.exprOP.termr;
 
-		#ifdef DE
-		printf("-> ( TermL ");
-		#endif
-
-		getTerm( mLeft, CHECK_INT);
-
-		#ifdef DE
-		printf(" ) ( TermR ");
-		#endif
-
+		getTerm( mLeft);
 		fprintf(fp, " %s ", mSim->body.simexpression.arg.exprOP.C_OP3);
-		getTerm( mRight, CHECK_INT);
+		getTerm( mRight);
 
-		#ifdef DE
-		printf(" )");
-		#endif
-
-		if(R_INT != mLeft->body.term.res && R_INT != mRight->body.term.res)
+		if(R_INT != mLeft->body.term.res)
 		{
-			printf("error: Both operands of '"); 
-			printTree(mSim);
-			printf("' are not Integers\n");
-		}
-		else if(R_INT != mLeft->body.term.res)
-		{
-			printf("error: Left operand of '"); 
+			printf("%s: %d: error: Left operand of '", ipFile, printLine(mLeft)); 
 			printTree(mSim);
 			printf("' : '");
 			printTree(mLeft);
 			printf("' is not an Integer\n");
+			err = 1;
 		}
-		else if(R_INT != mRight->body.term.res)
+		if(R_INT != mRight->body.term.res)
 		{
-			printf("error: Right operand of '"); 
+			printf("%s: %d: error: Right operand of '", ipFile, printLine(mRight)); 
 			printTree(mSim);
 			printf("' : '");
 			printTree(mRight);
 			printf("' is not an Integer\n");
+			err = 1;
 		}
-		else if(R_UNDEF == mSim->body.simexpression.res)
+		if(R_UNDEF == mSim->body.simexpression.res && 1 != err)
 		{
 			mSim->body.simexpression.res = R_INT;
+			return CHECK_INT;
 		}
-
-		#ifdef DE
-		printf("{%d}", mSim->body.simexpression.res);
-		#endif
-		return CHECK_INT;
+		else
+			return NIL;
 	}
 }
 
 int getExpr( Tree* mExpr)
 {
+	int err = 0;
+	int ret = 0;
 	if(T_NO_OP == mExpr->body.expression.type)
 	{
-		#ifdef DE
-		printf(" Expr -> SimpleExpr ");
-		#endif
-		getSim(mExpr->body.expression.arg.simpleExpr, NIL);
+		ret = getSim(mExpr->body.expression.arg.simpleExpr);
 		mExpr->body.expression.res = mExpr->body.expression.arg.simpleExpr->body.simexpression.res;
-		#ifdef DE
-		printf("{%d}", mExpr->body.expression.res);
-		#endif
 		if(R_BOOL == mExpr->body.expression.res)
+		{
 			return CHECK_BOOL;
+		}
+		else
+			return ret;
 	}
 	else if(T_OP == mExpr->body.expression.type)
 	{
 		Tree* mLeft  = mExpr->body.expression.arg.exprOP.simpleExprl;
 		Tree* mRight = mExpr->body.expression.arg.exprOP.simpleExprr;
 
-		#ifdef DE
-		printf(" Expr -> ( SimpleExprL ");
-		#endif
-		getSim( mLeft, CHECK_INT);
-		#ifdef DE
-		printf(" ) ( SimpleExprR ");
-		#endif
+		getSim( mLeft);
 		fprintf(fp, " %s ", mExpr->body.expression.arg.exprOP.C_OP4);
-		getSim( mRight, CHECK_INT);
-		#ifdef DE
-		printf(" )");
-		#endif
+		getSim( mRight);
 
-		if(R_INT != mLeft->body.simexpression.res && R_INT != mRight->body.simexpression.res)
+		if(R_INT != mLeft->body.simexpression.res)
 		{
-			printf("error: Both operands of '"); 
-			printTree(mExpr);
-			printf("' are not Integers\n");
-		}
-		else if(R_INT != mLeft->body.simexpression.res)
-		{
-			printf("error: Left operand of '"); 
+			printf("%s: %d: error: Left operand of '", ipFile, printLine(mLeft)); 
 			printTree(mExpr);
 			printf("' : '");
 			printTree(mLeft);
 			printf("' is not an Integer\n");
+			err = 1;
 		}
-		else if(R_INT != mRight->body.simexpression.res)
+		if(R_INT != mRight->body.simexpression.res)
 		{
-			printf("error: Right operand of '"); 
+			printf("%s: %d: error: Right operand of '", ipFile, printLine(mRight)); 
 			printTree(mExpr);
 			printf("' : '");
 			printTree(mRight);
 			printf("' is not an Integer\n");
+			err = 1;
 		}
-		else if(R_UNDEF == mExpr->body.expression.res)
+		if(R_UNDEF == mExpr->body.expression.res && 1 != err)
 		{
 			mExpr->body.expression.res = R_BOOL;
+			return CHECK_BOOL;
 		}
-		return CHECK_BOOL;
+		else
+			return NIL;
 	}
 }
 
@@ -978,7 +1025,8 @@ int getStatSeq(Tree *mStatSeq, int level)
 						}
 						else
 						{
-							printf("error: readInt operand '%s' is not an integer\n", mAsgn->body.assign.C_IDENT);
+							printf("%s: %d: error: readInt operand '%s' is not an integer\n", 
+								ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
 							break;
 						}
 					}
@@ -991,11 +1039,13 @@ int getStatSeq(Tree *mStatSeq, int level)
 					{
 						if(!strcmp("UNDEFINED", s->type))
 						{
-							printf("error: operand '%s' undeclared\n", mAsgn->body.assign.C_IDENT);
+							printf("%s: %d: error: operand '%s' undeclared\n", ipFile,
+								mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
 							break;
 						}
 					}
 					fprintf(fp, "%*c %s = ", level, 9, mAsgn->body.assign.C_IDENT);
+					ch = 0;
 					ch = getExpr(mAsgn->body.assign.arg3.expr);
 					if(CHECK_INT == ch)
 					{
@@ -1005,7 +1055,10 @@ int getStatSeq(Tree *mStatSeq, int level)
 						{
 							if(strcmp("int", s->type))
 							{
-								printf(";\t*** %s is not an integer ***\n", mAsgn->body.assign.C_IDENT);
+							printf("%s: %d: error: assigning an integer to a non-integer variable '%s' in '", 
+								ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
+								printTree(mAsgn);
+								printf("'\n");
 							}
 							else
 								fprintf(fp, ";\n");
@@ -1019,8 +1072,8 @@ int getStatSeq(Tree *mStatSeq, int level)
 						{
 							if(strcmp("bool", s->type))
 							{
-								printf("error: assigning a boolean to a non-boolean variable '%s' in '", 
-									mAsgn->body.assign.C_IDENT);
+							printf("%s: %d: error: assigning a boolean to a non-boolean variable '%s' in '", 
+								ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
 								printTree(mAsgn);
 								printf("'\n");
 							}
@@ -1041,7 +1094,8 @@ int getStatSeq(Tree *mStatSeq, int level)
 				ch = getExpr(mIf->body.ifcl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
-					printf("error: expression guarding 'if' is not boolean: '");
+					printf("%s: %d: error: expression guarding 'if' is not boolean: '", ipFile,
+						printLine(mIf->body.ifcl.expr));
 					printTree(mIf->body.ifcl.expr);
 					printf("'\n");
 				}
@@ -1071,7 +1125,8 @@ int getStatSeq(Tree *mStatSeq, int level)
 				ch = getExpr(mWhile->body.whilecl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
-					printf("error: expression guarding 'while' is not boolean: '");
+					printf("%s: %d: error: expression guarding 'while' is not boolean: '", ipFile,
+						printLine(mWhile->body.whilecl.expr));
 					printTree(mWhile->body.whilecl.expr);
 					printf("'\n");
 				}
@@ -1092,7 +1147,15 @@ int getStatSeq(Tree *mStatSeq, int level)
 				ch = getExpr(mWrite->body.writeint.expr);
 				if(CHECK_BOOL == ch)
 				{
-					printf("error: writeInt cannot write into a boolean: '");
+					printf("%s: %d: error: writeInt cannot write into a boolean: '", ipFile, 
+						printLine(mWrite->body.writeint.expr));
+					printTree(mWrite->body.writeint.expr);
+					printf("'\n");
+				}
+				else if(R_UNDEF == mWrite->body.writeint.expr->body.expression.res)	
+				{	
+					printf("%s: %d: error: writeInt cannot write into a undefined type: '", ipFile, 
+						printLine(mWrite->body.writeint.expr));
 					printTree(mWrite->body.writeint.expr);
 					printf("'\n");
 				}
@@ -1121,8 +1184,13 @@ int genCode(Tree* root)
 	while(NULL != mDecl)
 	{
 		Tree *mType = mDecl->body.declare.type;
-		if(-1 != defineVar(mDecl->body.declare.C_IDENT, mType))
-			fprintf(fp, "\t %s %s;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+		if(-1 != defineVar(mDecl->body.declare.C_IDENT, mType, mDecl->body.declare.line))
+		{
+			if(!strcmp(mType->body.terminal, "int"))
+				fprintf(fp, "\t %s %s = 0;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+			else if(!strcmp(mType->body.terminal, "bool"))
+				fprintf(fp, "\t %s %s = false;\n", mType->body.terminal, mDecl->body.declare.C_IDENT);
+		}
 
 		mDecl = mDecl->body.declare.decl;
 	}
@@ -1143,6 +1211,7 @@ int	ival;
 char	cval;
 char	*sval;
 struct tree	*tval;
+struct ADDLINE	*sline;
 };
 
 %token <cval> LP
@@ -1191,21 +1260,33 @@ struct tree	*tval;
 %type <tval> Factor
 %type <tval> ElseCl
 
+%type <tval> Declare
+%type <sline> Ident
+
 %start Program
 %%
 
 Program:
 	PROGRAM	Declarations BEGIN_K Stmtseq END_K	{ $$ = addProg($1, $2, $3, $4, $5);
 							//  printTree($$);
-							//  printSym();
 							  genCode($$);
 							  printSym();
 							}
 	;
 
 Declarations:
-	VAR IDENTIFIER AS Type SC Declarations		{ $$ = addDecl($1, $2, $3, $4, $5, $6);}
+	Declare Declarations				{ $$ = modDecl($1, $2);}
 	| /* Epsilon */					{ $$ = NULL;}
+	;
+
+Declare:
+	VAR Ident AS Type SC				{ $$ = addDecl($1, $2->ident, $3, $4, $5, NULL, $2->line); free($2);}
+	;
+
+Ident:
+	IDENTIFIER					{ $$ = (ADDLINE*) malloc(sizeof(ADDLINE));
+							  $$->ident = $1;
+							  $$->line = lineNum; }
 	;
 
 Type:
@@ -1226,8 +1307,8 @@ Stmt:
 	;
 
 Assignment:
-	IDENTIFIER ASGN Expr				{ $$ = addAssign1($1, $2, $3);}
-	| IDENTIFIER ASGN READINT 			{ $$ = addAssign2($1, $2, $3);}
+	Ident ASGN Expr				{ $$ = addAssign1($1->ident, $2, $3, $1->line); free($1);}
+	| Ident ASGN READINT 			{ $$ = addAssign2($1->ident, $2, $3, $1->line); free($1);}
 	;
 
 IfStmt:
@@ -1263,9 +1344,9 @@ Term:
 	;
 
 Factor:
-	IDENTIFIER					{ $$ = addIdent($1);}
-	| NUMBER					{ $$ = addNumber($1);} 
-	| LITERAL					{ $$ = addLiteral($1);}
+	IDENTIFIER					{ $$ = addIdent($1, lineNum);}
+	| NUMBER					{ $$ = addNumber($1, lineNum);} 
+	| LITERAL					{ $$ = addLiteral($1, lineNum);}
 	| LP Expr RP					{ $$ = addFactor($1, $2, $3);}
 	;
 

@@ -3,21 +3,11 @@ program
    var SMALLER as int ;
    var BIGGER as int ;
    var TEMP as int ;
+   var TEMP1 as bool ;
 begin
-      BIGGER := BIGGER - (SMALLER - BIGGER);
-   BIGGER := readInt ;
-   TEMP1 := readInt ;
 
-   if SMALLER > BIGGER then
-      TEMP1 := SMALLER ;
-      TEMP := 2147483648 ;
-      SMALLER := BIGGER ;
-      BIGGER := TEMP ;
-   else
-      TEMP := SMALLER;
-   end ;
-
-   while SMALLER < 0 do
+	TEMP1 := 568;
+   while SMALLER div 0 do
       BIGGER := BIGGER - SMALLER ;
 
       if SMALLER > BIGGER then

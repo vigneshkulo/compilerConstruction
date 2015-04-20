@@ -7,12 +7,15 @@
 	#include "common.h"
 	#endif
 
+	extern char ipFile[10];
+	int lineNum = 1;
 	int symIndex = 0;
         SYMTABLE *symTable = NULL;
         SYMTABLE *s, *tmp = NULL;
 %}
 
-blanks          [ \t\n]+
+blanks          [ \t]+
+newline		[\n]
 identifier	[A-Z][A-Z0-9]*
 number		[1-9][0-9]*|0
 
@@ -140,6 +143,7 @@ number		[1-9][0-9]*|0
 		}
 
 {blanks}        { /* ignore */ }
+{newline}	{ lineNum++;}
 
 {number}	{
 			yylval.ival = atoi(yytext);
@@ -164,6 +168,6 @@ number		[1-9][0-9]*|0
 			return IDENTIFIER;
 		}
 
-.		;
+.		{ printf("%s: %d: error: Undefined Symbol: '%s'\n", ipFile, lineNum, yytext);};
 
 %%

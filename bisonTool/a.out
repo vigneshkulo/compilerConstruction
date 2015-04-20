@@ -1,21 +1,11 @@
  int main(int argc, char* argv[]) {
-	 int BIGGER;
-	 int SMALLER;
-	 int TEMP;
+	 int BIGGER = 0;
+	 int SMALLER = 0;
+	 int TEMP = 0;
+	 bool TEMP1 = false;
 
-	 BIGGER = BIGGER - (SMALLER - BIGGER);
-	 BIGGER = readInt;
-
-	 if (SMALLER - BIGGER           	 TEMP = ;
-           	 SMALLER = BIGGER;
-           	 BIGGER = TEMP;
-	 }
-	 else {
-           	 TEMP = SMALLER;
-	 }
-
-	 while (SMALLER < 0) {
-           	 BIGGER = BIGGER - SMALLER;
+	 TEMP1 = 568
+	 while (SMALLER div 0           	 BIGGER = BIGGER - SMALLER;
 
            	 if (SMALLER > BIGGER) {
                        	 TEMP = SMALLER;
