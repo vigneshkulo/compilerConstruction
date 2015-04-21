@@ -878,6 +878,17 @@ int getTerm( Tree* mTerm)
 		if(!strcmp("div", mTerm->body.term.arg.exprOP.C_OP2))
 		{
 			fprintf(fp, " / ");
+
+			/* Check for Divide by Zero */
+			if(T_NUMBER == mRight->body.factor.type)
+			{
+				if( 0 == mRight->body.factor.arg.number)
+				{
+					printf("%s: %d: warning: division by zero: '", ipFile, printLine(mRight)); 
+					printTree(mTerm);
+					printf("'\n");
+				}
+			}
 		}
 		else if(!strcmp("mod", mTerm->body.term.arg.exprOP.C_OP2))
 		{
@@ -1237,6 +1248,182 @@ int genCode(Tree* root)
 	return 0;
 }
 
+int freeMem(Tree* root)
+{
+	if(NULL == root)
+	{
+		return -1;
+	}
+
+	switch(root->type)
+	{
+		case T_PROGRAM:	
+				free(root->body.program.C_PROG);
+				if(NULL != root->body.program.decl)
+				{
+					freeMem(root->body.program.decl);	
+				}
+				free(root->body.program.C_BEGIN);
+				if(NULL != root->body.program.statSeq)
+				{
+					freeMem(root->body.program.statSeq);	
+				}
+				free(root->body.program.C_END);
+				free(root);
+				break;
+
+		case T_DECL:	
+				free(root->body.declare.C_IDENT);
+				free(root->body.declare.C_AS);
+				if(NULL != root->body.declare.type)
+					freeMem(root->body.declare.type);	
+				if(NULL != root->body.declare.decl)
+				{
+					freeMem(root->body.declare.decl);	
+				}
+				free(root);
+				break;
+
+		case T_STMTSEQ:	
+				freeMem(root->body.statementseq.stmt);	
+				if(NULL != root->body.statementseq.statSeq)
+				{
+					freeMem(root->body.statementseq.statSeq);	
+				}
+				free(root);
+				break;
+
+		case T_STMT:	
+				freeMem(root->body.statement.stmt);	
+				free(root);
+				break;
+
+		case T_WRITE:	
+				free(root->body.writeint.C_WRITEINT);
+				freeMem(root->body.writeint.expr);	
+				free(root);
+				break;
+
+		case T_ASSIGN:	
+				free( root->body.assign.C_IDENT);
+				free( root->body.assign.C_ASGN);
+
+				if(T_EXPR == root->body.assign.type)
+				{
+					freeMem(root->body.assign.arg3.expr);	
+				}
+				else
+					free( root->body.assign.arg3.C_READINT);
+				free(root);
+				break;
+
+		case T_EXPR:	
+				if(T_NO_OP == root->body.expression.type)
+				{
+					freeMem(root->body.expression.arg.simpleExpr);	
+				}
+				else if(T_OP == root->body.expression.type)
+				{
+					freeMem(root->body.expression.arg.exprOP.simpleExprl);	
+					free( root->body.expression.arg.exprOP.C_OP4);
+					freeMem(root->body.expression.arg.exprOP.simpleExprr);	
+				}
+				free(root);
+				break;
+
+		case T_SIMPLE_EXPR:	
+				if(T_NO_OP == root->body.simexpression.type)
+				{
+					freeMem(root->body.simexpression.arg.term);	
+				}
+				else if(T_OP == root->body.simexpression.type)
+				{
+					freeMem(root->body.simexpression.arg.exprOP.terml);	
+					free( root->body.simexpression.arg.exprOP.C_OP3);
+					freeMem(root->body.simexpression.arg.exprOP.termr);	
+				}
+				free(root);
+				break;
+	
+		case T_TERM:	
+				if(T_NO_OP == root->body.term.type)
+				{
+					freeMem(root->body.term.arg.factor);	
+				}
+				else if(T_OP == root->body.term.type)
+				{
+					freeMem(root->body.term.arg.exprOP.factorl);	
+					free( root->body.term.arg.exprOP.C_OP2);
+					freeMem(root->body.term.arg.exprOP.factorr);	
+				}
+				free(root);
+				break;
+	
+		case T_FACTOR:	
+				if(T_IDENT == root->body.factor.type)
+				{
+					free( root->body.factor.arg.ident);
+				}
+				else if(T_LIT == root->body.factor.type)
+				{
+					free( root->body.factor.arg.literal);
+				}
+				else if(T_PAR_EXPR == root->body.factor.type)
+				{
+					freeMem(root->body.factor.arg.parenExpr.expr);	
+				}
+				free(root);
+				break;
+
+		case T_IF:	
+				free( root->body.ifcl.C_IF);
+				freeMem(root->body.ifcl.expr);	
+				free( root->body.ifcl.C_THEN);
+				if(NULL != root->body.ifcl.statSeq)
+				{
+					freeMem(root->body.ifcl.statSeq);	
+				}
+				if(NULL != root->body.ifcl.elseCl)
+				{
+					freeMem(root->body.ifcl.elseCl);	
+				}
+				free( root->body.ifcl.C_END);
+				free(root);
+				break;
+
+		case T_WHILE:	
+				free( root->body.whilecl.C_WHILE);
+				freeMem(root->body.whilecl.expr);	
+				free( root->body.whilecl.C_DO);
+				if(NULL != root->body.whilecl.statSeq)
+				{
+					freeMem(root->body.whilecl.statSeq);	
+				}
+				free( root->body.whilecl.C_END);
+				free(root);
+				break;
+
+		case T_ELSE:	
+				free( root->body.elsecl.C_ELSE);
+				if(NULL != root->body.elsecl.statSeq)
+				{
+					freeMem(root->body.elsecl.statSeq);	
+				}
+				free(root);
+				break;
+	
+		case T_TERMINAL:	
+				free( root->body.terminal);
+				free(root);
+				break;
+	
+		default:
+				printf("* Undefined TYPE: %d\n", root->type);
+				break;
+	}
+	return 1;
+}
+
 %}
 
 /* Symbols */
@@ -1305,6 +1492,7 @@ Program:
 	PROGRAM	Declarations BEGIN_K Stmtseq END_K	{ $$ = addProg($1, $2, $3, $4, $5);
 							  genCode($$);
 							  printSym();
+							  freeMem($$);
 							}
 	;
 

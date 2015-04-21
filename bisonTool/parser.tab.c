@@ -943,6 +943,17 @@ int getTerm( Tree* mTerm)
 		if(!strcmp("div", mTerm->body.term.arg.exprOP.C_OP2))
 		{
 			fprintf(fp, " / ");
+
+			/* Check for Divide by Zero */
+			if(T_NUMBER == mRight->body.factor.type)
+			{
+				if( 0 == mRight->body.factor.arg.number)
+				{
+					printf("%s: %d: warning: division by zero: '", ipFile, printLine(mRight)); 
+					printTree(mTerm);
+					printf("'\n");
+				}
+			}
 		}
 		else if(!strcmp("mod", mTerm->body.term.arg.exprOP.C_OP2))
 		{
@@ -1302,8 +1313,188 @@ int genCode(Tree* root)
 	return 0;
 }
 
+int freeMem(Tree* root)
+{
+	if(NULL == root)
+	{
+		return -1;
+	}
 
-#line 1307 "parser.tab.c" /* yacc.c:339  */
+	switch(root->type)
+	{
+		case T_PROGRAM:	
+				free(root->body.program.C_PROG);
+				if(NULL != root->body.program.decl)
+				{
+					freeMem(root->body.program.decl);	
+				}
+				free(root->body.program.C_BEGIN);
+				if(NULL != root->body.program.statSeq)
+				{
+					freeMem(root->body.program.statSeq);	
+				}
+				free(root->body.program.C_END);
+				free(root);
+				break;
+
+		case T_DECL:	
+				free(root->body.declare.C_IDENT);
+				free(root->body.declare.C_AS);
+				if(NULL != root->body.declare.type)
+					freeMem(root->body.declare.type);	
+				if(NULL != root->body.declare.decl)
+				{
+					freeMem(root->body.declare.decl);	
+				}
+				free(root);
+				break;
+
+		case T_STMTSEQ:	
+				freeMem(root->body.statementseq.stmt);	
+				if(NULL != root->body.statementseq.statSeq)
+				{
+					freeMem(root->body.statementseq.statSeq);	
+				}
+				free(root);
+				break;
+
+		case T_STMT:	
+				freeMem(root->body.statement.stmt);	
+				free(root);
+				break;
+
+		case T_WRITE:	
+				free(root->body.writeint.C_WRITEINT);
+				freeMem(root->body.writeint.expr);	
+				free(root);
+				break;
+
+		case T_ASSIGN:	
+				free( root->body.assign.C_IDENT);
+				free( root->body.assign.C_ASGN);
+
+				if(T_EXPR == root->body.assign.type)
+				{
+					freeMem(root->body.assign.arg3.expr);	
+				}
+				else
+					free( root->body.assign.arg3.C_READINT);
+				free(root);
+				break;
+
+		case T_EXPR:	
+				if(T_NO_OP == root->body.expression.type)
+				{
+					freeMem(root->body.expression.arg.simpleExpr);	
+				}
+				else if(T_OP == root->body.expression.type)
+				{
+					freeMem(root->body.expression.arg.exprOP.simpleExprl);	
+					free( root->body.expression.arg.exprOP.C_OP4);
+					freeMem(root->body.expression.arg.exprOP.simpleExprr);	
+				}
+				free(root);
+				break;
+
+		case T_SIMPLE_EXPR:	
+				if(T_NO_OP == root->body.simexpression.type)
+				{
+					freeMem(root->body.simexpression.arg.term);	
+				}
+				else if(T_OP == root->body.simexpression.type)
+				{
+					freeMem(root->body.simexpression.arg.exprOP.terml);	
+					free( root->body.simexpression.arg.exprOP.C_OP3);
+					freeMem(root->body.simexpression.arg.exprOP.termr);	
+				}
+				free(root);
+				break;
+	
+		case T_TERM:	
+				if(T_NO_OP == root->body.term.type)
+				{
+					freeMem(root->body.term.arg.factor);	
+				}
+				else if(T_OP == root->body.term.type)
+				{
+					freeMem(root->body.term.arg.exprOP.factorl);	
+					free( root->body.term.arg.exprOP.C_OP2);
+					freeMem(root->body.term.arg.exprOP.factorr);	
+				}
+				free(root);
+				break;
+	
+		case T_FACTOR:	
+				if(T_IDENT == root->body.factor.type)
+				{
+					free( root->body.factor.arg.ident);
+				}
+				else if(T_LIT == root->body.factor.type)
+				{
+					free( root->body.factor.arg.literal);
+				}
+				else if(T_NUMBER == root->body.factor.type)
+				{
+				//	free( root->body.factor.arg.number);
+				}
+				else if(T_PAR_EXPR == root->body.factor.type)
+				{
+					freeMem(root->body.factor.arg.parenExpr.expr);	
+				}
+				free(root);
+				break;
+
+		case T_IF:	
+				free( root->body.ifcl.C_IF);
+				freeMem(root->body.ifcl.expr);	
+				free( root->body.ifcl.C_THEN);
+				if(NULL != root->body.ifcl.statSeq)
+				{
+					freeMem(root->body.ifcl.statSeq);	
+				}
+				if(NULL != root->body.ifcl.elseCl)
+				{
+					freeMem(root->body.ifcl.elseCl);	
+				}
+				free( root->body.ifcl.C_END);
+				free(root);
+				break;
+
+		case T_WHILE:	
+				free( root->body.whilecl.C_WHILE);
+				freeMem(root->body.whilecl.expr);	
+				free( root->body.whilecl.C_DO);
+				if(NULL != root->body.whilecl.statSeq)
+				{
+					freeMem(root->body.whilecl.statSeq);	
+				}
+				free( root->body.whilecl.C_END);
+				free(root);
+				break;
+
+		case T_ELSE:	
+				free( root->body.elsecl.C_ELSE);
+				if(NULL != root->body.elsecl.statSeq)
+				{
+					freeMem(root->body.elsecl.statSeq);	
+				}
+				free(root);
+				break;
+	
+		case T_TERMINAL:	
+				free( root->body.terminal);
+				free(root);
+				break;
+	
+		default:
+				printf("* Undefined TYPE: %d\n", root->type);
+				break;
+	}
+	return 1;
+}
+
+
+#line 1498 "parser.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -1370,7 +1561,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 1244 "parser.y" /* yacc.c:355  */
+#line 1435 "parser.y" /* yacc.c:355  */
 
 int	ival;
 char	cval;
@@ -1378,7 +1569,7 @@ char	*sval;
 struct tree	*tval;
 struct ADDLINE	*sline;
 
-#line 1382 "parser.tab.c" /* yacc.c:355  */
+#line 1573 "parser.tab.c" /* yacc.c:355  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
@@ -1393,7 +1584,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 1397 "parser.tab.c" /* yacc.c:358  */
+#line 1588 "parser.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -1693,10 +1884,10 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,  1305,  1305,  1312,  1313,  1317,  1321,  1327,  1328,  1332,
-    1333,  1337,  1338,  1339,  1340,  1344,  1345,  1349,  1353,  1354,
-    1358,  1362,  1366,  1367,  1371,  1372,  1376,  1377,  1381,  1382,
-    1383,  1384
+       0,  1496,  1496,  1504,  1505,  1509,  1513,  1519,  1520,  1524,
+    1525,  1529,  1530,  1531,  1532,  1536,  1537,  1541,  1545,  1546,
+    1550,  1554,  1558,  1559,  1563,  1564,  1568,  1569,  1573,  1574,
+    1575,  1576
 };
 #endif
 
@@ -2499,192 +2690,193 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 1305 "parser.y" /* yacc.c:1646  */
+#line 1496 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addProg((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));
 							  genCode((yyval.tval));
 							  printSym();
+							  freeMem((yyval.tval));
 							}
-#line 2508 "parser.tab.c" /* yacc.c:1646  */
+#line 2700 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 1312 "parser.y" /* yacc.c:1646  */
+#line 1504 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = modDecl((yyvsp[-1].tval), (yyvsp[0].tval));}
-#line 2514 "parser.tab.c" /* yacc.c:1646  */
+#line 2706 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 1313 "parser.y" /* yacc.c:1646  */
+#line 1505 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 2520 "parser.tab.c" /* yacc.c:1646  */
+#line 2712 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 1317 "parser.y" /* yacc.c:1646  */
+#line 1509 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addDecl((yyvsp[-4].sval), (yyvsp[-3].sline)->ident, (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].cval), NULL, (yyvsp[-3].sline)->line); free((yyvsp[-3].sline));}
-#line 2526 "parser.tab.c" /* yacc.c:1646  */
+#line 2718 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 1321 "parser.y" /* yacc.c:1646  */
+#line 1513 "parser.y" /* yacc.c:1646  */
     { (yyval.sline) = (ADDLINE*) malloc(sizeof(ADDLINE));
 							  (yyval.sline)->ident = (yyvsp[0].sval);
 							  (yyval.sline)->line = lineNum; }
-#line 2534 "parser.tab.c" /* yacc.c:1646  */
+#line 2726 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 1327 "parser.y" /* yacc.c:1646  */
+#line 1519 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2540 "parser.tab.c" /* yacc.c:1646  */
+#line 2732 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 1328 "parser.y" /* yacc.c:1646  */
+#line 1520 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2546 "parser.tab.c" /* yacc.c:1646  */
+#line 2738 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 1332 "parser.y" /* yacc.c:1646  */
+#line 1524 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmtSeq((yyvsp[-2].tval), (yyvsp[-1].cval), (yyvsp[0].tval)); }
-#line 2552 "parser.tab.c" /* yacc.c:1646  */
+#line 2744 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 1333 "parser.y" /* yacc.c:1646  */
+#line 1525 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL; }
-#line 2558 "parser.tab.c" /* yacc.c:1646  */
+#line 2750 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 1337 "parser.y" /* yacc.c:1646  */
+#line 1529 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_ASSIGN);}
-#line 2564 "parser.tab.c" /* yacc.c:1646  */
+#line 2756 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 1338 "parser.y" /* yacc.c:1646  */
+#line 1530 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_IF);}
-#line 2570 "parser.tab.c" /* yacc.c:1646  */
+#line 2762 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 1339 "parser.y" /* yacc.c:1646  */
+#line 1531 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WHILE);}
-#line 2576 "parser.tab.c" /* yacc.c:1646  */
+#line 2768 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 1340 "parser.y" /* yacc.c:1646  */
+#line 1532 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WRITE);}
-#line 2582 "parser.tab.c" /* yacc.c:1646  */
+#line 2774 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 1344 "parser.y" /* yacc.c:1646  */
+#line 1536 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign1((yyvsp[-2].sline)->ident, (yyvsp[-1].sval), (yyvsp[0].tval), (yyvsp[-2].sline)->line); free((yyvsp[-2].sline));}
-#line 2588 "parser.tab.c" /* yacc.c:1646  */
+#line 2780 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 1345 "parser.y" /* yacc.c:1646  */
+#line 1537 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign2((yyvsp[-2].sline)->ident, (yyvsp[-1].sval), (yyvsp[0].sval), (yyvsp[-2].sline)->line); free((yyvsp[-2].sline));}
-#line 2594 "parser.tab.c" /* yacc.c:1646  */
+#line 2786 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 1349 "parser.y" /* yacc.c:1646  */
+#line 1541 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addIf((yyvsp[-5].sval), (yyvsp[-4].tval), (yyvsp[-3].sval), (yyvsp[-2].tval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 2600 "parser.tab.c" /* yacc.c:1646  */
+#line 2792 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 1353 "parser.y" /* yacc.c:1646  */
+#line 1545 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addElseCl((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2606 "parser.tab.c" /* yacc.c:1646  */
+#line 2798 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 1354 "parser.y" /* yacc.c:1646  */
+#line 1546 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 2612 "parser.tab.c" /* yacc.c:1646  */
+#line 2804 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 1358 "parser.y" /* yacc.c:1646  */
+#line 1550 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWhile((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 2618 "parser.tab.c" /* yacc.c:1646  */
+#line 2810 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 1362 "parser.y" /* yacc.c:1646  */
+#line 1554 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWrite((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2624 "parser.tab.c" /* yacc.c:1646  */
+#line 2816 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 1366 "parser.y" /* yacc.c:1646  */
+#line 1558 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr1((yyvsp[0].tval));}
-#line 2630 "parser.tab.c" /* yacc.c:1646  */
+#line 2822 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 1367 "parser.y" /* yacc.c:1646  */
+#line 1559 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr2((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2636 "parser.tab.c" /* yacc.c:1646  */
+#line 2828 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 1371 "parser.y" /* yacc.c:1646  */
+#line 1563 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2642 "parser.tab.c" /* yacc.c:1646  */
+#line 2834 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 1372 "parser.y" /* yacc.c:1646  */
+#line 1564 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr2((yyvsp[0].tval));}
-#line 2648 "parser.tab.c" /* yacc.c:1646  */
+#line 2840 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 1376 "parser.y" /* yacc.c:1646  */
+#line 1568 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2654 "parser.tab.c" /* yacc.c:1646  */
+#line 2846 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 1377 "parser.y" /* yacc.c:1646  */
+#line 1569 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm2((yyvsp[0].tval));}
-#line 2660 "parser.tab.c" /* yacc.c:1646  */
+#line 2852 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 1381 "parser.y" /* yacc.c:1646  */
+#line 1573 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addIdent((yyvsp[0].sval), lineNum);}
-#line 2666 "parser.tab.c" /* yacc.c:1646  */
+#line 2858 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 1382 "parser.y" /* yacc.c:1646  */
+#line 1574 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addNumber((yyvsp[0].ival), lineNum);}
-#line 2672 "parser.tab.c" /* yacc.c:1646  */
+#line 2864 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 1383 "parser.y" /* yacc.c:1646  */
+#line 1575 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addLiteral((yyvsp[0].sval), lineNum);}
-#line 2678 "parser.tab.c" /* yacc.c:1646  */
+#line 2870 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 1384 "parser.y" /* yacc.c:1646  */
+#line 1576 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addFactor((yyvsp[-2].cval), (yyvsp[-1].tval), (yyvsp[0].cval));}
-#line 2684 "parser.tab.c" /* yacc.c:1646  */
+#line 2876 "parser.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 2688 "parser.tab.c" /* yacc.c:1646  */
+#line 2880 "parser.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -2912,7 +3104,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 1387 "parser.y" /* yacc.c:1906  */
+#line 1579 "parser.y" /* yacc.c:1906  */
 
 
 int yyerror(char *s) {
