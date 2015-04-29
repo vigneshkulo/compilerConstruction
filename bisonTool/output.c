@@ -2,17 +2,42 @@
 #include <stdlib.h>
 
 int main(int argc, char* argv[]) {
-	int X = 0;
-	int Y = 0;
-	int Z = 0;
-	bool A = false;
-	bool B = false;
-	bool C = false;
+	int SMALLER = 0;
+	int BIGGER = 0;
+	int TEMP = 0;
 
-	A = true;
-	B = false;
-	X = 0;
-	Y = 255;
-	X = true	Y = false	A = 0	B = 144	X = B	Y = C	A = X + Y	B = Z * X
+	scanf("%d", &BIGGER);
+	scanf("%d", &SMALLER);
+
+
+	if(0 == TEMP) {
+           	printf("runtime error: division by zero: 'BIGGER div TEMP '\n");
+	}
+	else {
+
+           	if(0 == (BIGGER / TEMP)) {
+                       	printf("runtime error: division by zero: 'SMALLER div ( BIGGER div TEMP ) '\n");
+           	}
+           	else {
+                       	while ((BIGGER > (SMALLER / (BIGGER / TEMP)))) {
+                                   	BIGGER = BIGGER - SMALLER;
+                       	}
+           	}
+	}
+
+
+	if(0 == TEMP) {
+           	printf("runtime error: division by zero: 'BIGGER div TEMP '\n");
+	}
+	else {
+
+           	if(0 == (BIGGER / TEMP)) {
+                       	printf("runtime error: division by zero: 'SMALLER div ( BIGGER div TEMP ) '\n");
+           	}
+           	else {
+                       	printf("%d\n", (BIGGER + (SMALLER / (BIGGER / TEMP))));
+           	}
+	}
+
 return 0;
 }

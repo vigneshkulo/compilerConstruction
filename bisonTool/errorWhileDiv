@@ -1,0 +1,14 @@
+program
+   var SMALLER as int ;
+   var BIGGER as int ;
+   var TEMP as int ;
+begin
+   BIGGER := readInt ;
+   SMALLER := readInt ;
+
+   while (BIGGER > (SMALLER div ( BIGGER div TEMP))) do
+      BIGGER := BIGGER - SMALLER ;
+   end ;
+
+   writeInt (BIGGER + (SMALLER div ( BIGGER div TEMP)));
+end

@@ -432,7 +432,7 @@ Tree* addTerminal(char* terminal)
 	return cur;
 }
 
-int printTree (Tree* root)
+int printTree (Tree* root, FILE* fpOut)
 {
 	if(NULL == root)
 	{
@@ -447,7 +447,7 @@ int printTree (Tree* root)
 				if(NULL != root->body.program.decl)
 				{
 					printf("Decl(");
-					printTree(root->body.program.decl);	
+					printTree(root->body.program.decl, fpOut);	
 					printf(") ");
 				}
 				printf("%s ", root->body.program.C_BEGIN);
@@ -455,7 +455,7 @@ int printTree (Tree* root)
 				if(NULL != root->body.program.statSeq)
 				{
 					printf("StmtSeq(");
-					printTree(root->body.program.statSeq);	
+					printTree(root->body.program.statSeq, fpOut);	
 					printf(") ");
 				}
 				printf("%s \n", root->body.program.C_END);
@@ -466,25 +466,25 @@ int printTree (Tree* root)
 				printf("%s ", root->body.declare.C_IDENT);
 				printf("%s ", root->body.declare.C_AS);
 				if(NULL != root->body.declare.type)
-					printTree(root->body.declare.type);	
+					printTree(root->body.declare.type, fpOut);	
 				printf("%c", root->body.declare.C_SC);
 				if(NULL != root->body.declare.decl)
 				{
 					printf(" Decl(");
-					printTree(root->body.declare.decl);	
+					printTree(root->body.declare.decl, fpOut);	
 					printf(") ");
 				}
 				break;
 
 		case T_STMTSEQ:	
 				printf(" Stmt(");
-				printTree(root->body.statementseq.stmt);	
+				printTree(root->body.statementseq.stmt, fpOut);	
 				printf(") ");
 				printf("%c", root->body.statementseq.C_SC);
 				if(NULL != root->body.statementseq.statSeq)
 				{
 					printf(" StmtSeq(");
-					printTree(root->body.statementseq.statSeq);	
+					printTree(root->body.statementseq.statSeq, fpOut);	
 					printf(") ");
 				}
 				break;
@@ -498,13 +498,13 @@ int printTree (Tree* root)
 					printf(" IF(");
 				else if(T_WHILE == root->body.statement.type)
 					printf(" WHILE(");
-				printTree(root->body.statement.stmt);	
+				printTree(root->body.statement.stmt, fpOut);	
 				printf(") ");
 				break;
 
 		case T_WRITE:	
 				printf("%s ", root->body.writeint.C_WRITEINT);
-				printTree(root->body.writeint.expr);	
+				printTree(root->body.writeint.expr, fpOut);	
 				break;
 
 		case T_ASSIGN:	
@@ -516,7 +516,7 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" Expr(");
 					#endif
-					printTree(root->body.assign.arg3.expr);	
+					printTree(root->body.assign.arg3.expr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -531,7 +531,7 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" SimpleExpr(");
 					#endif
-					printTree(root->body.expression.arg.simpleExpr);	
+					printTree(root->body.expression.arg.simpleExpr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -541,15 +541,15 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" SimpleExprL(");
 					#endif
-					printTree(root->body.expression.arg.exprOP.simpleExprl);	
+					printTree(root->body.expression.arg.exprOP.simpleExprl, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
-					printf("%s ", root->body.expression.arg.exprOP.C_OP4);
+					fprintf(fpOut, "%s ", root->body.expression.arg.exprOP.C_OP4);
 					#ifdef PR
 					printf(" SimpleExprR(");
 					#endif
-					printTree(root->body.expression.arg.exprOP.simpleExprr);	
+					printTree(root->body.expression.arg.exprOP.simpleExprr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -562,7 +562,7 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" Term(");
 					#endif
-					printTree(root->body.simexpression.arg.term);	
+					printTree(root->body.simexpression.arg.term, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -572,15 +572,15 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" TermL(");
 					#endif
-					printTree(root->body.simexpression.arg.exprOP.terml);	
+					printTree(root->body.simexpression.arg.exprOP.terml, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
-					printf("%s ", root->body.simexpression.arg.exprOP.C_OP3);
+					fprintf(fpOut, "%s ", root->body.simexpression.arg.exprOP.C_OP3);
 					#ifdef PR
 					printf(" TermR(");
 					#endif
-					printTree(root->body.simexpression.arg.exprOP.termr);	
+					printTree(root->body.simexpression.arg.exprOP.termr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -593,7 +593,7 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" Factor(");
 					#endif
-					printTree(root->body.term.arg.factor);	
+					printTree(root->body.term.arg.factor, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -603,15 +603,15 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" FactorL(");
 					#endif
-					printTree(root->body.term.arg.exprOP.factorl);	
+					printTree(root->body.term.arg.exprOP.factorl, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
-					printf("%s ", root->body.term.arg.exprOP.C_OP2);
+					fprintf(fpOut, "%s ", root->body.term.arg.exprOP.C_OP2);
 					#ifdef PR
 					printf(" FactorR(");
 					#endif
-					printTree(root->body.term.arg.exprOP.factorr);	
+					printTree(root->body.term.arg.exprOP.factorr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -621,44 +621,44 @@ int printTree (Tree* root)
 		case T_FACTOR:	
 				if(T_IDENT == root->body.factor.type)
 				{
-					printf("%s ", root->body.factor.arg.ident);
+					fprintf(fpOut, "%s ", root->body.factor.arg.ident);
 				}
 				else if(T_LIT == root->body.factor.type)
 				{
-					printf("%s ", root->body.factor.arg.literal);
+					fprintf(fpOut, "%s ", root->body.factor.arg.literal);
 				}
 				else if(T_NUMBER == root->body.factor.type)
 				{
-					printf("%d ", root->body.factor.arg.number);
+					fprintf(fpOut, "%d ", root->body.factor.arg.number);
 				}
 				else if(T_PAR_EXPR == root->body.factor.type)
 				{
-					printf("%c ", root->body.factor.arg.parenExpr.C_LP);
+					fprintf(fpOut, "%c ", root->body.factor.arg.parenExpr.C_LP);
 					#ifdef PR
 					printf(" Expr(");
 					#endif
-					printTree(root->body.factor.arg.parenExpr.expr);	
+					printTree(root->body.factor.arg.parenExpr.expr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
-					printf("%c ", root->body.factor.arg.parenExpr.C_RP);
+					fprintf(fpOut, "%c ", root->body.factor.arg.parenExpr.C_RP);
 				}
 				break;
 
 		case T_IF:	
 				printf("%s ", root->body.ifcl.C_IF);
-				printTree(root->body.ifcl.expr);	
+				printTree(root->body.ifcl.expr, fpOut);	
 				printf("%s ", root->body.ifcl.C_THEN);
 				if(NULL != root->body.ifcl.statSeq)
 				{
 					printf(" StmtSeq(");
-					printTree(root->body.ifcl.statSeq);	
+					printTree(root->body.ifcl.statSeq, fpOut);	
 					printf(") ");
 				}
 				if(NULL != root->body.ifcl.elseCl)
 				{
 					printf(" ElseCl(");
-					printTree(root->body.ifcl.elseCl);	
+					printTree(root->body.ifcl.elseCl, fpOut);	
 					printf(") ");
 				}
 				printf("%s ", root->body.ifcl.C_END);
@@ -666,12 +666,12 @@ int printTree (Tree* root)
 
 		case T_WHILE:	
 				printf("%s ", root->body.whilecl.C_WHILE);
-				printTree(root->body.whilecl.expr);	
+				printTree(root->body.whilecl.expr, fpOut);	
 				printf("%s ", root->body.whilecl.C_DO);
 				if(NULL != root->body.whilecl.statSeq)
 				{
 					printf(" StmtSeq(");
-					printTree(root->body.whilecl.statSeq);	
+					printTree(root->body.whilecl.statSeq, fpOut);	
 					printf(") ");
 				}
 				printf("%s ", root->body.whilecl.C_END);
@@ -682,7 +682,7 @@ int printTree (Tree* root)
 				if(NULL != root->body.elsecl.statSeq)
 				{
 					printf(" StmtSeq(");
-					printTree(root->body.elsecl.statSeq);	
+					printTree(root->body.elsecl.statSeq, fpOut);	
 					printf(") ");
 				}
 				break;
@@ -885,7 +885,7 @@ int getTerm( Tree* mTerm)
 				if( 0 == mRight->body.factor.arg.number)
 				{
 					printf("%s: %d: warning: division by zero: '", ipFile, printLine(mRight)); 
-					printTree(mTerm);
+					printTree(mTerm, stdout);
 					printf("'\n");
 				}
 			}
@@ -902,18 +902,18 @@ int getTerm( Tree* mTerm)
 		if(R_INT != mLeft->body.factor.res)
 		{
 			printf("%s: %d: error: Left operand of '", ipFile, printLine(mLeft)); 
-			printTree(mTerm);
+			printTree(mTerm, stdout);
 			printf("' : '");
-			printTree(mLeft);
+			printTree(mLeft, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
 		if(R_INT != mRight->body.factor.res)
 		{
 			printf("%s: %d: error: Right operand of '", ipFile, printLine(mRight)); 
-			printTree(mTerm);
+			printTree(mTerm, stdout);
 			printf("' : '");
-			printTree(mRight);
+			printTree(mRight, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
@@ -949,18 +949,18 @@ int getSim( Tree* mSim)
 		if(R_INT != mLeft->body.term.res)
 		{
 			printf("%s: %d: error: Left operand of '", ipFile, printLine(mLeft)); 
-			printTree(mSim);
+			printTree(mSim, stdout);
 			printf("' : '");
-			printTree(mLeft);
+			printTree(mLeft, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
 		if(R_INT != mRight->body.term.res)
 		{
 			printf("%s: %d: error: Right operand of '", ipFile, printLine(mRight)); 
-			printTree(mSim);
+			printTree(mSim, stdout);
 			printf("' : '");
-			printTree(mRight);
+			printTree(mRight, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
@@ -1008,18 +1008,18 @@ int getExpr( Tree* mExpr)
 		if(R_INT != mLeft->body.simexpression.res)
 		{
 			printf("%s: %d: error: Left operand of '", ipFile, printLine(mLeft)); 
-			printTree(mExpr);
+			printTree(mExpr, stdout);
 			printf("' : '");
-			printTree(mLeft);
+			printTree(mLeft, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
 		if(R_INT != mRight->body.simexpression.res)
 		{
 			printf("%s: %d: error: Right operand of '", ipFile, printLine(mRight)); 
-			printTree(mExpr);
+			printTree(mExpr, stdout);
 			printf("' : '");
-			printTree(mRight);
+			printTree(mRight, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
@@ -1033,9 +1033,90 @@ int getExpr( Tree* mExpr)
 	}
 }
 
+int checkDiv( Tree* root, int level)
+{
+	int ret = 0;
+	int ret1 = 0;
+	switch(root->type)
+	{
+		case T_EXPR:	
+			if(T_NO_OP == root->body.expression.type)
+			{
+				return checkDiv(root->body.expression.arg.simpleExpr, level);
+			}
+			else if(T_OP == root->body.expression.type)
+			{
+				ret  = checkDiv(root->body.expression.arg.exprOP.simpleExprl, level);	
+				ret1 = checkDiv(root->body.expression.arg.exprOP.simpleExprr, level);
+				if(ret > ret1)
+					return ret;
+				else
+					return ret1;
+			}
+			break;
+
+		case T_SIMPLE_EXPR:	
+			if(T_NO_OP == root->body.simexpression.type)
+			{
+				return checkDiv(root->body.simexpression.arg.term, level);	
+			}
+			else if(T_OP == root->body.simexpression.type)
+			{
+				ret  = checkDiv(root->body.simexpression.arg.exprOP.terml, level);	
+				ret1 = checkDiv(root->body.simexpression.arg.exprOP.termr, level);
+				if(ret > ret1)
+					return ret;
+				else
+					return ret1;
+			}
+			break;
+
+		case T_TERM:	
+			if(T_OP == root->body.term.type)
+			{
+				if(!strcmp("div", root->body.term.arg.exprOP.C_OP2))
+				{
+					ret = checkDiv(root->body.term.arg.exprOP.factorr, level);
+
+					if(ret > 0)
+						level += 12;
+
+					fprintf(fp, "\n%*cif(0 == ", level, 9);
+					getFactor(root->body.term.arg.exprOP.factorr);
+					fprintf(fp, ") {\n");
+					fprintf(fp, "%*cprintf(\"runtime error: division by zero: '", level + 12, 9);
+					printTree(root, fp);
+					fprintf(fp, "'\\n\");\n");
+					fprintf(fp, "%*c}\n", level, 9);
+					fprintf(fp, "%*celse {\n", level, 9);
+
+					return (1 + ret);
+				}
+			}
+			else if(T_NO_OP == root->body.term.type)
+			{
+				return checkDiv(root->body.term.arg.factor, level);
+			}
+			break;
+
+		case T_FACTOR:	
+			if(T_IDENT == root->body.factor.type || T_LIT == root->body.factor.type || T_NUMBER == root->body.factor.type)
+			{
+				return 0;
+			}
+			else if(T_PAR_EXPR == root->body.factor.type)
+			{
+				return checkDiv(root->body.factor.arg.parenExpr.expr, level);	
+			}
+			break;
+	}
+}
+
 int getStatSeq(Tree *mStatSeq, int level)
 {
+	int i = 0;
 	int ch = 0;
+	int chD = 0;
 	/* Statement Sequence Part */
 	while(NULL != mStatSeq)
 	{
@@ -1077,7 +1158,12 @@ int getStatSeq(Tree *mStatSeq, int level)
 							break;
 						}
 					}
-					fprintf(fp, "%*c%s = ", level, 9, mAsgn->body.assign.C_IDENT);
+
+					/* Check for division by zero runtime error */
+					chD = 0;
+					chD = checkDiv(mAsgn->body.assign.arg3.expr, level);
+					fprintf(fp, "%*c%s = ", level + (12*chD), 9, mAsgn->body.assign.C_IDENT);
+
 					ch = 0;
 					ch = getExpr(mAsgn->body.assign.arg3.expr);
 					if(CHECK_INT == ch)
@@ -1090,7 +1176,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 							{
 							printf("%s: %d: error: assigning an integer to a non-integer variable '%s' in '", 
 								ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
-								printTree(mAsgn);
+								printTree(mAsgn, stdout);
 								printf("'\n");
 							}
 							else
@@ -1107,7 +1193,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 							{
 							printf("%s: %d: error: assigning a boolean to a non-boolean variable '%s' in '", 
 								ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
-								printTree(mAsgn);
+								printTree(mAsgn, stdout);
 								printf("'\n");
 							}
 							else
@@ -1118,89 +1204,114 @@ int getStatSeq(Tree *mStatSeq, int level)
 					{
 						printf("%s: %d: error: assigning an 'undefined' type to a variable '%s' in '", 
 							ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
-							printTree(mAsgn);
+							printTree(mAsgn, stdout);
 							printf("'\n");
 					}
 					else
 						fprintf(fp, ";\n");
+
+					for(i = 0; i < chD; i++)
+						fprintf(fp, "%*c}\n", level + (12 * chD) - ((i+1) * 12), 9);
 				}
 				break;
 
 			case T_IF:;
 				fprintf(fp, "\n");
-
 				Tree *mIf = mStat->body.statement.stmt;
-				fprintf(fp, "%*cif (", level, 9); 
+
+				/* Check for division by zero runtime error */
+				chD = 0;
+				chD = checkDiv(mIf->body.ifcl.expr, level);
+
+				fprintf(fp, "%*cif (", level + (12*chD), 9); 
+
 				ch = getExpr(mIf->body.ifcl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
 					printf("%s: %d: error: expression guarding 'if' is not boolean: '", ipFile,
 						printLine(mIf->body.ifcl.expr));
-					printTree(mIf->body.ifcl.expr);
+					printTree(mIf->body.ifcl.expr, stdout);
 					printf("'\n");
 				}
 				else
 					fprintf(fp, ") {\n");
 
-				getStatSeq(mIf->body.ifcl.statSeq, level + 12);	
+				getStatSeq(mIf->body.ifcl.statSeq, level + 12 + (12*chD));	
 
 				Tree *mEl = mIf->body.ifcl.elseCl;
 				if(NULL != mEl)
 				{
-					fprintf(fp, "%*c}\n", level, 9);
-					fprintf(fp, "%*celse {\n", level, 9); 
-					getStatSeq(mEl->body.elsecl.statSeq, level + 12);	
-					fprintf(fp, "%*c}\n", level, 9);
+					fprintf(fp, "%*c}\n", level + (12*chD), 9);
+					fprintf(fp, "%*celse {\n", level + (12*chD), 9); 
+					getStatSeq(mEl->body.elsecl.statSeq, level + 12 + (12*chD));	
+					fprintf(fp, "%*c}\n", level + (12*chD), 9);
 				}
 				else
-					fprintf(fp, "%*c}\n", level, 9);
+					fprintf(fp, "%*c}\n", level + (12*chD), 9);
 
+				for(i = 0; i < chD; i++)
+					fprintf(fp, "%*c}\n", level + (12 * chD) - ((i+1) * 12), 9);
 				break;
 
 			case T_WHILE:;
 				fprintf(fp, "\n");
 
 				Tree *mWhile = mStat->body.statement.stmt;
-				fprintf(fp, "%*cwhile (", level, 9); 
+
+				/* Check for division by zero runtime error */
+				chD = 0;
+				chD = checkDiv(mWhile->body.whilecl.expr, level);
+
+				fprintf(fp, "%*cwhile (", level + (12*chD), 9); 
 				ch = getExpr(mWhile->body.whilecl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
 					printf("%s: %d: error: expression guarding 'while' is not boolean: '", ipFile,
 						printLine(mWhile->body.whilecl.expr));
-					printTree(mWhile->body.whilecl.expr);
+					printTree(mWhile->body.whilecl.expr, stdout);
 					printf("'\n");
 				}
 				else
 					fprintf(fp, ") {\n");
 
-				getStatSeq(mWhile->body.whilecl.statSeq, level + 12);	
-				fprintf(fp, "%*c}\n", level, 9);
+				getStatSeq(mWhile->body.whilecl.statSeq, level + 12 + (12*chD));	
+				fprintf(fp, "%*c}\n", level + (12*chD), 9);
 
+				for(i = 0; i < chD; i++)
+					fprintf(fp, "%*c}\n", level + (12 * chD) - ((i+1) * 12), 9);
 				break;
 
 			case T_WRITE:;
 				fprintf(fp, "\n");
 
 				Tree *mWrite = mStat->body.statement.stmt;
-				fprintf(fp, "%*cprintf(\"%%d\\n\", ", level, 9); 
+
+				/* Check for division by zero runtime error */
+				chD = 0;
+				chD = checkDiv(mWrite->body.writeint.expr, level);
+
+				fprintf(fp, "%*cprintf(\"%%d\\n\", ", level + (12 * chD), 9); 
 
 				ch = getExpr(mWrite->body.writeint.expr);
 				if(CHECK_BOOL == ch)
 				{
 					printf("%s: %d: error: writeInt cannot write into a boolean: '", ipFile, 
 						printLine(mWrite->body.writeint.expr));
-					printTree(mWrite->body.writeint.expr);
+					printTree(mWrite->body.writeint.expr, stdout);
 					printf("'\n");
 				}
 				else if(R_UNDEF == mWrite->body.writeint.expr->body.expression.res)	
 				{	
 					printf("%s: %d: error: writeInt cannot write into a undefined type: '", ipFile, 
 						printLine(mWrite->body.writeint.expr));
-					printTree(mWrite->body.writeint.expr);
+					printTree(mWrite->body.writeint.expr, stdout);
 					printf("'\n");
 				}
 				else
 					fprintf(fp, ");\n");
+
+				for(i = 0; i < chD; i++)
+					fprintf(fp, "%*c}\n", level + (12 * chD) - ((i+1) * 12), 9);
 				break;
 
 			default:

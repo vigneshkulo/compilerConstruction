@@ -497,7 +497,7 @@ Tree* addTerminal(char* terminal)
 	return cur;
 }
 
-int printTree (Tree* root)
+int printTree (Tree* root, FILE* fpOut)
 {
 	if(NULL == root)
 	{
@@ -512,7 +512,7 @@ int printTree (Tree* root)
 				if(NULL != root->body.program.decl)
 				{
 					printf("Decl(");
-					printTree(root->body.program.decl);	
+					printTree(root->body.program.decl, fpOut);	
 					printf(") ");
 				}
 				printf("%s ", root->body.program.C_BEGIN);
@@ -520,7 +520,7 @@ int printTree (Tree* root)
 				if(NULL != root->body.program.statSeq)
 				{
 					printf("StmtSeq(");
-					printTree(root->body.program.statSeq);	
+					printTree(root->body.program.statSeq, fpOut);	
 					printf(") ");
 				}
 				printf("%s \n", root->body.program.C_END);
@@ -531,25 +531,25 @@ int printTree (Tree* root)
 				printf("%s ", root->body.declare.C_IDENT);
 				printf("%s ", root->body.declare.C_AS);
 				if(NULL != root->body.declare.type)
-					printTree(root->body.declare.type);	
+					printTree(root->body.declare.type, fpOut);	
 				printf("%c", root->body.declare.C_SC);
 				if(NULL != root->body.declare.decl)
 				{
 					printf(" Decl(");
-					printTree(root->body.declare.decl);	
+					printTree(root->body.declare.decl, fpOut);	
 					printf(") ");
 				}
 				break;
 
 		case T_STMTSEQ:	
 				printf(" Stmt(");
-				printTree(root->body.statementseq.stmt);	
+				printTree(root->body.statementseq.stmt, fpOut);	
 				printf(") ");
 				printf("%c", root->body.statementseq.C_SC);
 				if(NULL != root->body.statementseq.statSeq)
 				{
 					printf(" StmtSeq(");
-					printTree(root->body.statementseq.statSeq);	
+					printTree(root->body.statementseq.statSeq, fpOut);	
 					printf(") ");
 				}
 				break;
@@ -563,13 +563,13 @@ int printTree (Tree* root)
 					printf(" IF(");
 				else if(T_WHILE == root->body.statement.type)
 					printf(" WHILE(");
-				printTree(root->body.statement.stmt);	
+				printTree(root->body.statement.stmt, fpOut);	
 				printf(") ");
 				break;
 
 		case T_WRITE:	
 				printf("%s ", root->body.writeint.C_WRITEINT);
-				printTree(root->body.writeint.expr);	
+				printTree(root->body.writeint.expr, fpOut);	
 				break;
 
 		case T_ASSIGN:	
@@ -581,7 +581,7 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" Expr(");
 					#endif
-					printTree(root->body.assign.arg3.expr);	
+					printTree(root->body.assign.arg3.expr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -596,7 +596,7 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" SimpleExpr(");
 					#endif
-					printTree(root->body.expression.arg.simpleExpr);	
+					printTree(root->body.expression.arg.simpleExpr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -606,15 +606,15 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" SimpleExprL(");
 					#endif
-					printTree(root->body.expression.arg.exprOP.simpleExprl);	
+					printTree(root->body.expression.arg.exprOP.simpleExprl, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
-					printf("%s ", root->body.expression.arg.exprOP.C_OP4);
+					fprintf(fpOut, "%s ", root->body.expression.arg.exprOP.C_OP4);
 					#ifdef PR
 					printf(" SimpleExprR(");
 					#endif
-					printTree(root->body.expression.arg.exprOP.simpleExprr);	
+					printTree(root->body.expression.arg.exprOP.simpleExprr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -627,7 +627,7 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" Term(");
 					#endif
-					printTree(root->body.simexpression.arg.term);	
+					printTree(root->body.simexpression.arg.term, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -637,15 +637,15 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" TermL(");
 					#endif
-					printTree(root->body.simexpression.arg.exprOP.terml);	
+					printTree(root->body.simexpression.arg.exprOP.terml, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
-					printf("%s ", root->body.simexpression.arg.exprOP.C_OP3);
+					fprintf(fpOut, "%s ", root->body.simexpression.arg.exprOP.C_OP3);
 					#ifdef PR
 					printf(" TermR(");
 					#endif
-					printTree(root->body.simexpression.arg.exprOP.termr);	
+					printTree(root->body.simexpression.arg.exprOP.termr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -658,7 +658,7 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" Factor(");
 					#endif
-					printTree(root->body.term.arg.factor);	
+					printTree(root->body.term.arg.factor, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -668,15 +668,15 @@ int printTree (Tree* root)
 					#ifdef PR
 					printf(" FactorL(");
 					#endif
-					printTree(root->body.term.arg.exprOP.factorl);	
+					printTree(root->body.term.arg.exprOP.factorl, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
-					printf("%s ", root->body.term.arg.exprOP.C_OP2);
+					fprintf(fpOut, "%s ", root->body.term.arg.exprOP.C_OP2);
 					#ifdef PR
 					printf(" FactorR(");
 					#endif
-					printTree(root->body.term.arg.exprOP.factorr);	
+					printTree(root->body.term.arg.exprOP.factorr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
@@ -686,44 +686,44 @@ int printTree (Tree* root)
 		case T_FACTOR:	
 				if(T_IDENT == root->body.factor.type)
 				{
-					printf("%s ", root->body.factor.arg.ident);
+					fprintf(fpOut, "%s ", root->body.factor.arg.ident);
 				}
 				else if(T_LIT == root->body.factor.type)
 				{
-					printf("%s ", root->body.factor.arg.literal);
+					fprintf(fpOut, "%s ", root->body.factor.arg.literal);
 				}
 				else if(T_NUMBER == root->body.factor.type)
 				{
-					printf("%d ", root->body.factor.arg.number);
+					fprintf(fpOut, "%d ", root->body.factor.arg.number);
 				}
 				else if(T_PAR_EXPR == root->body.factor.type)
 				{
-					printf("%c ", root->body.factor.arg.parenExpr.C_LP);
+					fprintf(fpOut, "%c ", root->body.factor.arg.parenExpr.C_LP);
 					#ifdef PR
 					printf(" Expr(");
 					#endif
-					printTree(root->body.factor.arg.parenExpr.expr);	
+					printTree(root->body.factor.arg.parenExpr.expr, fpOut);	
 					#ifdef PR
 					printf(") ");
 					#endif
-					printf("%c ", root->body.factor.arg.parenExpr.C_RP);
+					fprintf(fpOut, "%c ", root->body.factor.arg.parenExpr.C_RP);
 				}
 				break;
 
 		case T_IF:	
 				printf("%s ", root->body.ifcl.C_IF);
-				printTree(root->body.ifcl.expr);	
+				printTree(root->body.ifcl.expr, fpOut);	
 				printf("%s ", root->body.ifcl.C_THEN);
 				if(NULL != root->body.ifcl.statSeq)
 				{
 					printf(" StmtSeq(");
-					printTree(root->body.ifcl.statSeq);	
+					printTree(root->body.ifcl.statSeq, fpOut);	
 					printf(") ");
 				}
 				if(NULL != root->body.ifcl.elseCl)
 				{
 					printf(" ElseCl(");
-					printTree(root->body.ifcl.elseCl);	
+					printTree(root->body.ifcl.elseCl, fpOut);	
 					printf(") ");
 				}
 				printf("%s ", root->body.ifcl.C_END);
@@ -731,12 +731,12 @@ int printTree (Tree* root)
 
 		case T_WHILE:	
 				printf("%s ", root->body.whilecl.C_WHILE);
-				printTree(root->body.whilecl.expr);	
+				printTree(root->body.whilecl.expr, fpOut);	
 				printf("%s ", root->body.whilecl.C_DO);
 				if(NULL != root->body.whilecl.statSeq)
 				{
 					printf(" StmtSeq(");
-					printTree(root->body.whilecl.statSeq);	
+					printTree(root->body.whilecl.statSeq, fpOut);	
 					printf(") ");
 				}
 				printf("%s ", root->body.whilecl.C_END);
@@ -747,7 +747,7 @@ int printTree (Tree* root)
 				if(NULL != root->body.elsecl.statSeq)
 				{
 					printf(" StmtSeq(");
-					printTree(root->body.elsecl.statSeq);	
+					printTree(root->body.elsecl.statSeq, fpOut);	
 					printf(") ");
 				}
 				break;
@@ -950,7 +950,7 @@ int getTerm( Tree* mTerm)
 				if( 0 == mRight->body.factor.arg.number)
 				{
 					printf("%s: %d: warning: division by zero: '", ipFile, printLine(mRight)); 
-					printTree(mTerm);
+					printTree(mTerm, stdout);
 					printf("'\n");
 				}
 			}
@@ -967,18 +967,18 @@ int getTerm( Tree* mTerm)
 		if(R_INT != mLeft->body.factor.res)
 		{
 			printf("%s: %d: error: Left operand of '", ipFile, printLine(mLeft)); 
-			printTree(mTerm);
+			printTree(mTerm, stdout);
 			printf("' : '");
-			printTree(mLeft);
+			printTree(mLeft, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
 		if(R_INT != mRight->body.factor.res)
 		{
 			printf("%s: %d: error: Right operand of '", ipFile, printLine(mRight)); 
-			printTree(mTerm);
+			printTree(mTerm, stdout);
 			printf("' : '");
-			printTree(mRight);
+			printTree(mRight, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
@@ -1014,18 +1014,18 @@ int getSim( Tree* mSim)
 		if(R_INT != mLeft->body.term.res)
 		{
 			printf("%s: %d: error: Left operand of '", ipFile, printLine(mLeft)); 
-			printTree(mSim);
+			printTree(mSim, stdout);
 			printf("' : '");
-			printTree(mLeft);
+			printTree(mLeft, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
 		if(R_INT != mRight->body.term.res)
 		{
 			printf("%s: %d: error: Right operand of '", ipFile, printLine(mRight)); 
-			printTree(mSim);
+			printTree(mSim, stdout);
 			printf("' : '");
-			printTree(mRight);
+			printTree(mRight, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
@@ -1073,18 +1073,18 @@ int getExpr( Tree* mExpr)
 		if(R_INT != mLeft->body.simexpression.res)
 		{
 			printf("%s: %d: error: Left operand of '", ipFile, printLine(mLeft)); 
-			printTree(mExpr);
+			printTree(mExpr, stdout);
 			printf("' : '");
-			printTree(mLeft);
+			printTree(mLeft, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
 		if(R_INT != mRight->body.simexpression.res)
 		{
 			printf("%s: %d: error: Right operand of '", ipFile, printLine(mRight)); 
-			printTree(mExpr);
+			printTree(mExpr, stdout);
 			printf("' : '");
-			printTree(mRight);
+			printTree(mRight, stdout);
 			printf("' is not an Integer\n");
 			err = 1;
 		}
@@ -1098,9 +1098,90 @@ int getExpr( Tree* mExpr)
 	}
 }
 
+int checkDiv( Tree* root, int level)
+{
+	int ret = 0;
+	int ret1 = 0;
+	switch(root->type)
+	{
+		case T_EXPR:	
+			if(T_NO_OP == root->body.expression.type)
+			{
+				return checkDiv(root->body.expression.arg.simpleExpr, level);
+			}
+			else if(T_OP == root->body.expression.type)
+			{
+				ret  = checkDiv(root->body.expression.arg.exprOP.simpleExprl, level);	
+				ret1 = checkDiv(root->body.expression.arg.exprOP.simpleExprr, level);
+				if(ret > ret1)
+					return ret;
+				else
+					return ret1;
+			}
+			break;
+
+		case T_SIMPLE_EXPR:	
+			if(T_NO_OP == root->body.simexpression.type)
+			{
+				return checkDiv(root->body.simexpression.arg.term, level);	
+			}
+			else if(T_OP == root->body.simexpression.type)
+			{
+				ret  = checkDiv(root->body.simexpression.arg.exprOP.terml, level);	
+				ret1 = checkDiv(root->body.simexpression.arg.exprOP.termr, level);
+				if(ret > ret1)
+					return ret;
+				else
+					return ret1;
+			}
+			break;
+
+		case T_TERM:	
+			if(T_OP == root->body.term.type)
+			{
+				if(!strcmp("div", root->body.term.arg.exprOP.C_OP2))
+				{
+					ret = checkDiv(root->body.term.arg.exprOP.factorr, level);
+
+					if(ret > 0)
+						level += 12;
+
+					fprintf(fp, "\n%*cif(0 == ", level, 9);
+					getFactor(root->body.term.arg.exprOP.factorr);
+					fprintf(fp, ") {\n");
+					fprintf(fp, "%*cprintf(\"runtime error: division by zero: '", level + 12, 9);
+					printTree(root, fp);
+					fprintf(fp, "'\\n\");\n");
+					fprintf(fp, "%*c}\n", level, 9);
+					fprintf(fp, "%*celse {\n", level, 9);
+
+					return (1 + ret);
+				}
+			}
+			else if(T_NO_OP == root->body.term.type)
+			{
+				return checkDiv(root->body.term.arg.factor, level);
+			}
+			break;
+
+		case T_FACTOR:	
+			if(T_IDENT == root->body.factor.type || T_LIT == root->body.factor.type || T_NUMBER == root->body.factor.type)
+			{
+				return 0;
+			}
+			else if(T_PAR_EXPR == root->body.factor.type)
+			{
+				return checkDiv(root->body.factor.arg.parenExpr.expr, level);	
+			}
+			break;
+	}
+}
+
 int getStatSeq(Tree *mStatSeq, int level)
 {
+	int i = 0;
 	int ch = 0;
+	int chD = 0;
 	/* Statement Sequence Part */
 	while(NULL != mStatSeq)
 	{
@@ -1142,7 +1223,12 @@ int getStatSeq(Tree *mStatSeq, int level)
 							break;
 						}
 					}
-					fprintf(fp, "%*c%s = ", level, 9, mAsgn->body.assign.C_IDENT);
+
+					/* Check for division by zero runtime error */
+					chD = 0;
+					chD = checkDiv(mAsgn->body.assign.arg3.expr, level);
+					fprintf(fp, "%*c%s = ", level + (12*chD), 9, mAsgn->body.assign.C_IDENT);
+
 					ch = 0;
 					ch = getExpr(mAsgn->body.assign.arg3.expr);
 					if(CHECK_INT == ch)
@@ -1155,7 +1241,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 							{
 							printf("%s: %d: error: assigning an integer to a non-integer variable '%s' in '", 
 								ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
-								printTree(mAsgn);
+								printTree(mAsgn, stdout);
 								printf("'\n");
 							}
 							else
@@ -1172,7 +1258,7 @@ int getStatSeq(Tree *mStatSeq, int level)
 							{
 							printf("%s: %d: error: assigning a boolean to a non-boolean variable '%s' in '", 
 								ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
-								printTree(mAsgn);
+								printTree(mAsgn, stdout);
 								printf("'\n");
 							}
 							else
@@ -1183,89 +1269,114 @@ int getStatSeq(Tree *mStatSeq, int level)
 					{
 						printf("%s: %d: error: assigning an 'undefined' type to a variable '%s' in '", 
 							ipFile, mAsgn->body.assign.line, mAsgn->body.assign.C_IDENT);
-							printTree(mAsgn);
+							printTree(mAsgn, stdout);
 							printf("'\n");
 					}
 					else
 						fprintf(fp, ";\n");
+
+					for(i = 0; i < chD; i++)
+						fprintf(fp, "%*c}\n", level + (12 * chD) - ((i+1) * 12), 9);
 				}
 				break;
 
 			case T_IF:;
 				fprintf(fp, "\n");
-
 				Tree *mIf = mStat->body.statement.stmt;
-				fprintf(fp, "%*cif (", level, 9); 
+
+				/* Check for division by zero runtime error */
+				chD = 0;
+				chD = checkDiv(mIf->body.ifcl.expr, level);
+
+				fprintf(fp, "%*cif (", level + (12*chD), 9); 
+
 				ch = getExpr(mIf->body.ifcl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
 					printf("%s: %d: error: expression guarding 'if' is not boolean: '", ipFile,
 						printLine(mIf->body.ifcl.expr));
-					printTree(mIf->body.ifcl.expr);
+					printTree(mIf->body.ifcl.expr, stdout);
 					printf("'\n");
 				}
 				else
 					fprintf(fp, ") {\n");
 
-				getStatSeq(mIf->body.ifcl.statSeq, level + 12);	
+				getStatSeq(mIf->body.ifcl.statSeq, level + 12 + (12*chD));	
 
 				Tree *mEl = mIf->body.ifcl.elseCl;
 				if(NULL != mEl)
 				{
-					fprintf(fp, "%*c}\n", level, 9);
-					fprintf(fp, "%*celse {\n", level, 9); 
-					getStatSeq(mEl->body.elsecl.statSeq, level + 12);	
-					fprintf(fp, "%*c}\n", level, 9);
+					fprintf(fp, "%*c}\n", level + (12*chD), 9);
+					fprintf(fp, "%*celse {\n", level + (12*chD), 9); 
+					getStatSeq(mEl->body.elsecl.statSeq, level + 12 + (12*chD));	
+					fprintf(fp, "%*c}\n", level + (12*chD), 9);
 				}
 				else
-					fprintf(fp, "%*c}\n", level, 9);
+					fprintf(fp, "%*c}\n", level + (12*chD), 9);
 
+				for(i = 0; i < chD; i++)
+					fprintf(fp, "%*c}\n", level + (12 * chD) - ((i+1) * 12), 9);
 				break;
 
 			case T_WHILE:;
 				fprintf(fp, "\n");
 
 				Tree *mWhile = mStat->body.statement.stmt;
-				fprintf(fp, "%*cwhile (", level, 9); 
+
+				/* Check for division by zero runtime error */
+				chD = 0;
+				chD = checkDiv(mWhile->body.whilecl.expr, level);
+
+				fprintf(fp, "%*cwhile (", level + (12*chD), 9); 
 				ch = getExpr(mWhile->body.whilecl.expr);
 				if(CHECK_INT == ch || NIL == ch)
 				{
 					printf("%s: %d: error: expression guarding 'while' is not boolean: '", ipFile,
 						printLine(mWhile->body.whilecl.expr));
-					printTree(mWhile->body.whilecl.expr);
+					printTree(mWhile->body.whilecl.expr, stdout);
 					printf("'\n");
 				}
 				else
 					fprintf(fp, ") {\n");
 
-				getStatSeq(mWhile->body.whilecl.statSeq, level + 12);	
-				fprintf(fp, "%*c}\n", level, 9);
+				getStatSeq(mWhile->body.whilecl.statSeq, level + 12 + (12*chD));	
+				fprintf(fp, "%*c}\n", level + (12*chD), 9);
 
+				for(i = 0; i < chD; i++)
+					fprintf(fp, "%*c}\n", level + (12 * chD) - ((i+1) * 12), 9);
 				break;
 
 			case T_WRITE:;
 				fprintf(fp, "\n");
 
 				Tree *mWrite = mStat->body.statement.stmt;
-				fprintf(fp, "%*cprintf(\"%%d\\n\", ", level, 9); 
+
+				/* Check for division by zero runtime error */
+				chD = 0;
+				chD = checkDiv(mWrite->body.writeint.expr, level);
+
+				fprintf(fp, "%*cprintf(\"%%d\\n\", ", level + (12 * chD), 9); 
 
 				ch = getExpr(mWrite->body.writeint.expr);
 				if(CHECK_BOOL == ch)
 				{
 					printf("%s: %d: error: writeInt cannot write into a boolean: '", ipFile, 
 						printLine(mWrite->body.writeint.expr));
-					printTree(mWrite->body.writeint.expr);
+					printTree(mWrite->body.writeint.expr, stdout);
 					printf("'\n");
 				}
 				else if(R_UNDEF == mWrite->body.writeint.expr->body.expression.res)	
 				{	
 					printf("%s: %d: error: writeInt cannot write into a undefined type: '", ipFile, 
 						printLine(mWrite->body.writeint.expr));
-					printTree(mWrite->body.writeint.expr);
+					printTree(mWrite->body.writeint.expr, stdout);
 					printf("'\n");
 				}
 				else
 					fprintf(fp, ");\n");
+
+				for(i = 0; i < chD; i++)
+					fprintf(fp, "%*c}\n", level + (12 * chD) - ((i+1) * 12), 9);
 				break;
 
 			default:
@@ -1433,10 +1544,6 @@ int freeMem(Tree* root)
 				{
 					free( root->body.factor.arg.literal);
 				}
-				else if(T_NUMBER == root->body.factor.type)
-				{
-				//	free( root->body.factor.arg.number);
-				}
 				else if(T_PAR_EXPR == root->body.factor.type)
 				{
 					freeMem(root->body.factor.arg.parenExpr.expr);	
@@ -1494,7 +1601,7 @@ int freeMem(Tree* root)
 }
 
 
-#line 1498 "parser.tab.c" /* yacc.c:339  */
+#line 1605 "parser.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -1561,7 +1668,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 1435 "parser.y" /* yacc.c:355  */
+#line 1542 "parser.y" /* yacc.c:355  */
 
 int	ival;
 char	cval;
@@ -1569,7 +1676,7 @@ char	*sval;
 struct tree	*tval;
 struct ADDLINE	*sline;
 
-#line 1573 "parser.tab.c" /* yacc.c:355  */
+#line 1680 "parser.tab.c" /* yacc.c:355  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
@@ -1584,7 +1691,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 1588 "parser.tab.c" /* yacc.c:358  */
+#line 1695 "parser.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -1884,10 +1991,10 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,  1496,  1496,  1504,  1505,  1509,  1513,  1519,  1520,  1524,
-    1525,  1529,  1530,  1531,  1532,  1536,  1537,  1541,  1545,  1546,
-    1550,  1554,  1558,  1559,  1563,  1564,  1568,  1569,  1573,  1574,
-    1575,  1576
+       0,  1603,  1603,  1611,  1612,  1616,  1620,  1626,  1627,  1631,
+    1632,  1636,  1637,  1638,  1639,  1643,  1644,  1648,  1652,  1653,
+    1657,  1661,  1665,  1666,  1670,  1671,  1675,  1676,  1680,  1681,
+    1682,  1683
 };
 #endif
 
@@ -2690,193 +2797,193 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 1496 "parser.y" /* yacc.c:1646  */
+#line 1603 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addProg((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));
 							  genCode((yyval.tval));
 							  printSym();
 							  freeMem((yyval.tval));
 							}
-#line 2700 "parser.tab.c" /* yacc.c:1646  */
+#line 2807 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 1504 "parser.y" /* yacc.c:1646  */
+#line 1611 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = modDecl((yyvsp[-1].tval), (yyvsp[0].tval));}
-#line 2706 "parser.tab.c" /* yacc.c:1646  */
+#line 2813 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 1505 "parser.y" /* yacc.c:1646  */
+#line 1612 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 2712 "parser.tab.c" /* yacc.c:1646  */
+#line 2819 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 1509 "parser.y" /* yacc.c:1646  */
+#line 1616 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addDecl((yyvsp[-4].sval), (yyvsp[-3].sline)->ident, (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].cval), NULL, (yyvsp[-3].sline)->line); free((yyvsp[-3].sline));}
-#line 2718 "parser.tab.c" /* yacc.c:1646  */
+#line 2825 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 1513 "parser.y" /* yacc.c:1646  */
+#line 1620 "parser.y" /* yacc.c:1646  */
     { (yyval.sline) = (ADDLINE*) malloc(sizeof(ADDLINE));
 							  (yyval.sline)->ident = (yyvsp[0].sval);
 							  (yyval.sline)->line = lineNum; }
-#line 2726 "parser.tab.c" /* yacc.c:1646  */
+#line 2833 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 1519 "parser.y" /* yacc.c:1646  */
+#line 1626 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2732 "parser.tab.c" /* yacc.c:1646  */
+#line 2839 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 1520 "parser.y" /* yacc.c:1646  */
+#line 1627 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerminal((yyvsp[0].sval));}
-#line 2738 "parser.tab.c" /* yacc.c:1646  */
+#line 2845 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 1524 "parser.y" /* yacc.c:1646  */
+#line 1631 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmtSeq((yyvsp[-2].tval), (yyvsp[-1].cval), (yyvsp[0].tval)); }
-#line 2744 "parser.tab.c" /* yacc.c:1646  */
+#line 2851 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 1525 "parser.y" /* yacc.c:1646  */
+#line 1632 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL; }
-#line 2750 "parser.tab.c" /* yacc.c:1646  */
+#line 2857 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 1529 "parser.y" /* yacc.c:1646  */
+#line 1636 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_ASSIGN);}
-#line 2756 "parser.tab.c" /* yacc.c:1646  */
+#line 2863 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 1530 "parser.y" /* yacc.c:1646  */
+#line 1637 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_IF);}
-#line 2762 "parser.tab.c" /* yacc.c:1646  */
+#line 2869 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 1531 "parser.y" /* yacc.c:1646  */
+#line 1638 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WHILE);}
-#line 2768 "parser.tab.c" /* yacc.c:1646  */
+#line 2875 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 1532 "parser.y" /* yacc.c:1646  */
+#line 1639 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addStmt((yyvsp[0].tval), T_WRITE);}
-#line 2774 "parser.tab.c" /* yacc.c:1646  */
+#line 2881 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 1536 "parser.y" /* yacc.c:1646  */
+#line 1643 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign1((yyvsp[-2].sline)->ident, (yyvsp[-1].sval), (yyvsp[0].tval), (yyvsp[-2].sline)->line); free((yyvsp[-2].sline));}
-#line 2780 "parser.tab.c" /* yacc.c:1646  */
+#line 2887 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 1537 "parser.y" /* yacc.c:1646  */
+#line 1644 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addAssign2((yyvsp[-2].sline)->ident, (yyvsp[-1].sval), (yyvsp[0].sval), (yyvsp[-2].sline)->line); free((yyvsp[-2].sline));}
-#line 2786 "parser.tab.c" /* yacc.c:1646  */
+#line 2893 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 1541 "parser.y" /* yacc.c:1646  */
+#line 1648 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addIf((yyvsp[-5].sval), (yyvsp[-4].tval), (yyvsp[-3].sval), (yyvsp[-2].tval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 2792 "parser.tab.c" /* yacc.c:1646  */
+#line 2899 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 1545 "parser.y" /* yacc.c:1646  */
+#line 1652 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addElseCl((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2798 "parser.tab.c" /* yacc.c:1646  */
+#line 2905 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 1546 "parser.y" /* yacc.c:1646  */
+#line 1653 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = NULL;}
-#line 2804 "parser.tab.c" /* yacc.c:1646  */
+#line 2911 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 1550 "parser.y" /* yacc.c:1646  */
+#line 1657 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWhile((yyvsp[-4].sval), (yyvsp[-3].tval), (yyvsp[-2].sval), (yyvsp[-1].tval), (yyvsp[0].sval));}
-#line 2810 "parser.tab.c" /* yacc.c:1646  */
+#line 2917 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 1554 "parser.y" /* yacc.c:1646  */
+#line 1661 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addWrite((yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2816 "parser.tab.c" /* yacc.c:1646  */
+#line 2923 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 1558 "parser.y" /* yacc.c:1646  */
+#line 1665 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr1((yyvsp[0].tval));}
-#line 2822 "parser.tab.c" /* yacc.c:1646  */
+#line 2929 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 1559 "parser.y" /* yacc.c:1646  */
+#line 1666 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addExpr2((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2828 "parser.tab.c" /* yacc.c:1646  */
+#line 2935 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 1563 "parser.y" /* yacc.c:1646  */
+#line 1670 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2834 "parser.tab.c" /* yacc.c:1646  */
+#line 2941 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 1564 "parser.y" /* yacc.c:1646  */
+#line 1671 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addSimpleExpr2((yyvsp[0].tval));}
-#line 2840 "parser.tab.c" /* yacc.c:1646  */
+#line 2947 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 1568 "parser.y" /* yacc.c:1646  */
+#line 1675 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm1((yyvsp[-2].tval), (yyvsp[-1].sval), (yyvsp[0].tval));}
-#line 2846 "parser.tab.c" /* yacc.c:1646  */
+#line 2953 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 1569 "parser.y" /* yacc.c:1646  */
+#line 1676 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addTerm2((yyvsp[0].tval));}
-#line 2852 "parser.tab.c" /* yacc.c:1646  */
+#line 2959 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 1573 "parser.y" /* yacc.c:1646  */
+#line 1680 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addIdent((yyvsp[0].sval), lineNum);}
-#line 2858 "parser.tab.c" /* yacc.c:1646  */
+#line 2965 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 1574 "parser.y" /* yacc.c:1646  */
+#line 1681 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addNumber((yyvsp[0].ival), lineNum);}
-#line 2864 "parser.tab.c" /* yacc.c:1646  */
+#line 2971 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 1575 "parser.y" /* yacc.c:1646  */
+#line 1682 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addLiteral((yyvsp[0].sval), lineNum);}
-#line 2870 "parser.tab.c" /* yacc.c:1646  */
+#line 2977 "parser.tab.c" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 1576 "parser.y" /* yacc.c:1646  */
+#line 1683 "parser.y" /* yacc.c:1646  */
     { (yyval.tval) = addFactor((yyvsp[-2].cval), (yyvsp[-1].tval), (yyvsp[0].cval));}
-#line 2876 "parser.tab.c" /* yacc.c:1646  */
+#line 2983 "parser.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 2880 "parser.tab.c" /* yacc.c:1646  */
+#line 2987 "parser.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -3104,7 +3211,7 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 1579 "parser.y" /* yacc.c:1906  */
+#line 1686 "parser.y" /* yacc.c:1906  */
 
 
 int yyerror(char *s) {

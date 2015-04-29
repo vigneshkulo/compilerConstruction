@@ -6,6 +6,8 @@ begin
 	Z := 55;
 	Y := 0; 
 	X := Z div 0;
-	X := Z div Y;
 	writeInt X ;
+
+	X := Z div Y;
+	X := Z + (X div (Y div Z));
 end
