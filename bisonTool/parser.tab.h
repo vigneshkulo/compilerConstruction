@@ -77,7 +77,7 @@ extern int yydebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 1542 "parser.y" /* yacc.c:1909  */
+#line 1544 "parser.y" /* yacc.c:1909  */
 
 int	ival;
 char	cval;

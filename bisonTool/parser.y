@@ -1092,6 +1092,8 @@ int checkDiv( Tree* root, int level)
 
 					return (1 + ret);
 				}
+				else
+					return 0;
 			}
 			else if(T_NO_OP == root->body.term.type)
 			{
